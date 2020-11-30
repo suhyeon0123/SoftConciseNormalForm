@@ -1,5 +1,7 @@
 #Regular Expression Implementation ,Written by Adrian Stoll
 import sys
+import copy
+
 class Node:
     def __lt__(self, other):
         return False
@@ -79,12 +81,13 @@ class KleenStar(Node):
         return self.r.hasHole()
     def spread(self, case):
         if type(self.r)==type((Hole())):
-            self.r = case
-            return True
-        if self.r.spread(case):
-            True
-        else:
-            False
+            if type(case) != type(KleenStar(Hole())):
+                self.r = case
+                return True
+            else:
+                return False
+
+        return self.r.spread(case)
     def spreadAll(self, case):
         if type(self.r) == type((Hole())):
             self.r = case
@@ -113,15 +116,15 @@ class Concatenate(Node):
         return self.a.hasHole() or self.b.hasHole()
     def spread(self, case):
         if type(self.a)==type((Hole())):
-            self.a = case
+            self.a = copy.deepcopy(case)
             return True
         elif type(self.b)==type((Hole())):
-            self.b = case
+            self.b = copy.deepcopy(case)
             return True
         if self.a.spread(case):
-            True
+            return True
         else:
-            self.b.spread(case)
+            return self.b.spread(case)
     def spreadAll(self, case):
         if type(self.a)==type((Hole())):
             self.a = case
@@ -156,15 +159,15 @@ class Or(Node):
         return self.a.hasHole() or self.b.hasHole()
     def spread(self, case):
         if type(self.a)==type((Hole())):
-            self.a = case
+            self.a = copy.deepcopy(case)
             return True
         elif type(self.b)==type((Hole())):
-            self.b = case
+            self.b = copy.deepcopy(case)
             return True
         if self.a.spread(case):
-            True
+            return True
         else:
-            self.b.spread(case)
+            return self.b.spread(case)
     def spreadAll(self, case):
         if type(self.a)==type((Hole())):
             self.a = case

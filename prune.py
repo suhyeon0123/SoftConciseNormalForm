@@ -1,6 +1,6 @@
 from FAdo.reex import *
 from FAdo.fa import *
-from FAdo.fio import *
+# from FAdo.fio import *
 from parseTree import *
 import copy
 
