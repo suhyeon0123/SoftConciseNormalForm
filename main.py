@@ -3,24 +3,13 @@ from FAdo.fa import *
 from FAdo.fio import *
 from queue import PriorityQueue
 import time
+from examples import Examples
+from parseTree import *
+import copy
+from prune import *
+import sys
 
-class Examples(object):
-
-    def __init__(self):
-        self.pos = []
-        self.neg = []
-
-    def addPos(self, example):
-        self.pos.append(example)
-
-    def addNeg(self, example):
-        self.neg.append(example)
-
-    def getPos(self):
-        return self.pos
-
-    def getNeg(self):
-        return self.neg
+#sys.setrecursionlimit(50000)
 
 
 def is_solution(s, examples):
@@ -37,148 +26,93 @@ def is_solution(s, examples):
     return True
 
 
-
-def isPrune(s):
-    return isPDead(s) or isNDead(s)
-
-def isPDead(s):
-    x = str2regexp(s.replace("#", "(0+1)*"))
-    it = iter(examples.getPos())
-    for i in it:
-        if not x.evalWordP(i):
-            return True
-    return False
-
-def isNDead(s):
-    x = str2regexp(s.replace("#", "@epsilon*"))
-    it = iter(examples.getNeg())
-    for i in it:
-        if x.evalWordP(i):
-            return True
-    return False
-
-
-def isRedundant(s):
-    s = unroll(s)
-    it = iter(examples.getPos())
-    for i in it:
-        if not s.evalWordP(i):
-            return True
-    return False
-
-'''def split(s) :
-    before = [s]
-    after = []
-    i = 0
-    idx = s.find("+")
-    while True:
-        
-'''
-
-
-
-def unroll(s):
-    i = 0
-    idx = s.find("*")
-    while idx != -1:
-        x = s.rfind("(", 0, idx)
-        mul = s.rfind("*", 0, idx)
-        if mul != -1 and x < mul:
-            x = s.rfind("(", 0, x - 1)
-            x = s.rfind("(", 0, x - 1)
-            x = s.rfind("(", 0, x - 1)
-
-        s = s[:idx] + s[x:idx] + s[x:idx] + s[idx:]
-        i = idx + 2 * (idx - x) + 1
-        idx = s.find("*", i)
-    return s
-
-
+#can compare when String , but object cant compare
 def removeOverlap(w) :
     new = PriorityQueue()
     now = w.get()
     new.put(now)
     while not w.empty():
         tmp = w.get()
-        if not now==tmp:
+        if not now.__repr__()==tmp.__repr__():
             now = tmp
             new.put(now)
     return new
 
 #---------------------------
 
-'''s="00(0+1(0)*)*(0)*1"
-print(s)
-i = 0
-idx = s.find("*")
-while idx != -1:
-    x = s.rfind("(", 0, idx)
-    mul = s.rfind("*", 0, idx)
-    if mul != -1 and x < mul:
-        x = s.rfind("(", 0, x - 1)
-        x = s.rfind("(", 0, x - 1)
-        x = s.rfind("(", 0, x - 1)
 
-    s = s[:idx] + s[x:idx] + s[x:idx] + s[idx:]
-    i = idx + 2*(idx - x) + 1
-    idx = s.find("*", i)
-print(s)
-exit()
-
-x = str2regexp("@epsilon*")
-print(x.evalWordP("00"))
-'''
-
-examples = Examples()
-
-examples.addPos('0')
-examples.addPos('00')
-examples.addPos('011')
-
-
-examples.addNeg('1')
-examples.addNeg('10')
-examples.addNeg('111')
-
-
-
-## queue생성 이후 hole삽입
 w = PriorityQueue()
-w.put((1, '#'))
+
+
+
+w.put((1, Character('0')))
+w.put((1, Character('1')))
+w.put((1, Or(Hole(),Hole())))
+w.put((1, Concatenate(Hole(),Hole())))
+w.put((1, KleenStar(Hole())))
+
+examples = Examples(2)
+answer = examples.getAnswer()
 
 i = 0
 start = time.time()
-while not w.empty() and i < 10000000000:
+
+while not w.empty() and i < 100000:
     tmp = w.get()
     s = tmp[1]
     cost = tmp[0]
+    if i == 35120:
+        print("dd")
+    print(s)
+    #and not isPrune(s, examples)
+    if s.hasHole() :
 
-    if s.count("#") != 0 :
-        idx = s.find('#')
-        w.put((cost+1, s[:idx] + '0' + s[idx+1:]))
-        w.put((cost + 1, s[:idx] + '1' + s[idx + 1:]))
-        #w.put((cost + 1, s[:idx] + '@epsilon' + s[idx + 1:]))
-        w.put((cost + 1, s[:idx] + '(#+#)' + s[idx + 1:]))
-        w.put((cost + 1, s[:idx] + '##' + s[idx + 1:]))
-        w.put((cost + 1, s[:idx] + '(#)*' + s[idx + 1:]))
-        print(s)
+        k = copy.deepcopy(s)
+        k.spread(Character('0'))
+        w.put((cost+1,k))
 
-    elif s.count("#") == 0 and is_solution(s, examples):
+        k = copy.deepcopy(s)
+        k.spread(Character('1'))
+        w.put((cost+1, k))
+
+        '''k = copy.deepcopy(s)
+        k.spread(Epsilon())
+        w.put((cost + 1, k))'''
+
+        k = copy.deepcopy(s)
+        k.spread(Or(Hole(),Hole()))
+        w.put((cost+3, k))
+
+        k = copy.deepcopy(s)
+        k.spread(Concatenate(Hole(),Hole()))
+        w.put((cost+3, k))
+
+        k = copy.deepcopy(s)
+        k.spread(KleenStar(Hole()))
+        w.put((cost+3, k))
+
+
+
+    elif not s.hasHole() and is_solution(repr(s), examples):
         end = time.time()
         print(end-start)
+        print("result:")
         print(s)
         break
 
     else:
         print(s)
 
-    if i % 5000 == 4999:
+    '''if i % 5000 == 4999:
         w = removeOverlap(w)
-        print("remove")
+        print("remove")'''
     i = i+1
 
+print("--end--")
 print("count = ")
 print(i)
+print("answer = " + answer)
+
 
 
 
