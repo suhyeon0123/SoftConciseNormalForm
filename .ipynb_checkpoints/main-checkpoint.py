@@ -57,30 +57,24 @@ w.put((1, KleenStar(Hole())))
 
 
 
-examples = Examples(4)
+examples = Examples(3)
 answer = examples.getAnswer()
 
 i = 0
 start = time.time()
-prevCost = 0
 
-while not w.empty() and i < 10000000:
+while not w.empty() and i < 1000000:
     tmp = w.get()
     s = tmp[1]
     cost = tmp[0]
-    #print(s, w.qsize(), cost)
-
-    if cost > prevCost:
-        scanned.clear()
-
-    prevCost = cost
-
-    hasHole = s.hasHole()
+    if i == 35120:
+        print("dd")
+    print(s, w.qsize(), cost)
 
     #and not isPrune(s, examples)
-    if hasHole :
+    if s.hasHole() :
 
-        for j, new_elem in enumerate([Character('0'), Character('1'), Or(Hole(), Hole()), Concatenate(Hole(), Hole()), KleenStar(Hole())]):
+        for i, new_elem in enumerate([Character('0'), Character('1'), Or(Hole(), Hole()), Concatenate(Hole(), Hole()), KleenStar(Hole())]):
             k = copy.deepcopy(s)
             k.spread(copy.deepcopy(new_elem))
 
@@ -89,27 +83,24 @@ while not w.empty() and i < 10000000:
             else:
                 scanned.add(k.__repr__)
 
-            if j<2:
+            if i<2:
                 w.put((cost + 1, k))
-            elif j==2: # Union
-                w.put((cost+3, k))
-            elif j==3: # Concatenation
+            elif i==2: # Union
+                w.put((cost+1, k))
+            elif i==3: # Concatenation
                 w.put((cost+1, k))
             else: # Kleene Star
                 w.put((cost+1, k))
 
 
-    elif is_solution(repr(s), examples):
+    elif not s.hasHole() and is_solution(repr(s), examples):
         end = time.time()
         print(end-start)
         print("result:", s)
         break
-    #else:
-    #    print("Not a solution:", s)
+    else:
+        print("Not a solution:", s)
 
-
-    if i % 10000 == 0:
-        print(i)
 
     '''if i % 5000 == 4999:
         w = removeOverlap(w)
