@@ -17,12 +17,12 @@ class Hole(Node):
         return '#'
     def hasHole(self):
         return True
-    def spread(self, case):
-        return True
-    def spreadAll(self, case):
+    def spread(self):
         return
-    def spreadAll(self, case):
-        return
+    def spreadAll(self):
+        return copy.deepcopy(KleenStar(Or(Character('0'), Character('1'))))
+    def spreadNp(self):
+        return Character('@emptyset')
 
 
 class Epsilon(Node):
@@ -34,9 +34,9 @@ class Epsilon(Node):
         return False
     def spread(self, case):
         return False
-    def spreadAll(self, case):
+    def spreadAll(self):
         return
-    def spreadAll(self, case):
+    def spreadNp(self):
         return
 
 class EpsilonBlank(Node):
@@ -48,9 +48,9 @@ class EpsilonBlank(Node):
         return False
     def spread(self, case):
         return False
-    def spreadAll(self, case):
+    def spreadAll(self):
         return
-    def spreadAll(self, case):
+    def spreadNp(self):
         return
 
 class Character(Node):
@@ -63,22 +63,31 @@ class Character(Node):
         return False
     def spread(self, case):
         return False
-    def spreadAll(self, case):
-        return
+    def spreadAll(self):
+        return self.c
     def spreadNp(self):
-        return
+        return self.c
 
 class KleenStar(Node):
     def __init__(self, r):
         self.r = r
         self.level = 1
     def __repr__(self):
+
+        if '{}'.format(self.r) == '@emptyset':
+            return '@epsilon'
+
+        if '{}'.format(self.r) == '@epsilon':
+            return '@epsilon'
+
         if self.r.level > self.level:
             return '({})*'.format(self.r)
         else:
             return '{}*'.format(self.r)
+
     def hasHole(self):
         return self.r.hasHole()
+
     def spread(self, case):
         if type(self.r)==type((Hole())):
             if type(case) != type(KleenStar(Hole())):
@@ -88,14 +97,16 @@ class KleenStar(Node):
                 return False
 
         return self.r.spread(case)
-    def spreadAll(self, case):
+
+    def spreadAll(self):
         if type(self.r) == type((Hole())):
-            self.r = case
+            self.r = copy.deepcopy(KleenStar(Or(Character('0'), Character('1'))))
         else:
-            self.r.spreadAll(case)
+            self.r.spreadAll()
+
     def spreadNp(self):
         if type(self.r) == type((Hole())):
-            self.r = Epsilon()
+            self.r = Character('@emptyset')
         else:
             self.r.spreadNp()
 
@@ -111,9 +122,20 @@ class Concatenate(Node):
                 return '({})'.format(side)
             else:
                 return '{}'.format(side)
+
+        if '@emptyset' in repr(self.a) or '@emptyset' in repr(self.b):
+            return '@emptyset'
+
+        if '@epsilon' == repr(self.a):
+            return formatSide(self.b)
+        elif '@epsilon' == repr(self.b):
+            return formatSide(self.a)
+
         return formatSide(self.a) + formatSide(self.b)
+
     def hasHole(self):
         return self.a.hasHole() or self.b.hasHole()
+
     def spread(self, case):
         if type(self.a)==type((Hole())):
             self.a = copy.deepcopy(case)
@@ -125,22 +147,26 @@ class Concatenate(Node):
             return True
         else:
             return self.b.spread(case)
-    def spreadAll(self, case):
+
+    def spreadAll(self):
         if type(self.a)==type((Hole())):
-            self.a = case
+            self.a = copy.deepcopy(KleenStar(Or(Character('0'), Character('1'))))
         else:
-            self.a.spreadAll(case)
+            self.a.spreadAll()
         if type(self.b)==type((Hole())):
-            self.b = case
+            self.b = copy.deepcopy(KleenStar(Or(Character('0'), Character('1'))))
+
         else:
-            self.b.spreadAll(case)
+            self.b.spreadAll()
+
     def spreadNp(self):
         if type(self.a)==type((Hole())):
-            self.a = EpsilonBlank()
+            self.a = Character('@emptyset')
         else:
             self.a.spreadNp()
+
         if type(self.b)==type((Hole())):
-            self.b = EpsilonBlank()
+            self.b = Character('@emptyset')
         else:
             self.b.spreadNp()
 
@@ -148,15 +174,25 @@ class Or(Node):
     def __init__(self, a, b):
         self.a, self.b = a, b
         self.level = 3
+
     def __repr__(self):
+
         def formatSide(side):
             if side.level > self.level:
                 return '({})'.format(side)
             else:
                 return '{}'.format(side)
+
+        if repr(self.a) == '@emptyset':
+            return formatSide(self.b)
+        elif repr(self.b) == '@emptyset':
+            return formatSide(self.a)
+
         return formatSide(self.a) + '+' + formatSide(self.b)
+
     def hasHole(self):
         return self.a.hasHole() or self.b.hasHole()
+
     def spread(self, case):
         if type(self.a)==type((Hole())):
             self.a = copy.deepcopy(case)
@@ -168,22 +204,23 @@ class Or(Node):
             return True
         else:
             return self.b.spread(case)
-    def spreadAll(self, case):
+
+    def spreadAll(self):
         if type(self.a)==type((Hole())):
-            self.a = case
+            self.a = copy.deepcopy(KleenStar(Or(Character('0'), Character('1'))))
         else:
-            self.a.spreadAll(case)
+            self.a.spreadAll()
         if type(self.b)==type((Hole())):
-            self.b = case
+            self.b = copy.deepcopy(KleenStar(Or(Character('0'), Character('1'))))
         else:
-            self.b.spreadAll(case)
+            self.b.spreadAll()
 
     def spreadNp(self):
         if type(self.a) == type((Hole())):
-            self.a = Epsilon()
+            self.a = Character('@emptyset')
         else:
             self.a.spreadNp()
         if type(self.b) == type((Hole())):
-            self.b = Epsilon()
+            self.b = Character('@emptyset')
         else:
-            self.b.spread()
+            self.b.spreadNp()
