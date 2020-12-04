@@ -90,7 +90,7 @@ w.put((205, Concatenate(Hole(),Hole())))
 w.put((220, KleenStar(Hole())))
 
 
-examples = Examples(3)
+examples = Examples(5)
 answer = examples.getAnswer()
 
 print(examples.getPos(), examples.getNeg())
@@ -120,12 +120,12 @@ while not w.empty() and not finished:
 
             k = copy.deepcopy(s)
 
-            k.spread(copy.deepcopy(new_elem))
+            k.spread(new_elem)
 
-            if k.__repr__ in scanned:
+            if repr(k) in scanned:
                 continue
             else:
-                scanned.add(k.__repr__)
+                scanned.add(repr(k))
 
             if is_pdead(k, examples):
                 #print(repr(k), "is pdead")
@@ -141,8 +141,8 @@ while not w.empty() and not finished:
             if not k.hasHole():
                 if is_solution(repr(k), examples):
                     end = time.time()
-                    print(end-start)
-                    print("result:", repr(k))
+                    print("Spent computation time:", end-start)
+                    print("Result RE:", repr(k))
                     finished = True
                     break
 
@@ -167,7 +167,7 @@ while not w.empty() and not finished:
 
 
     if i % 100 == 0:
-        print(i, cost, len(scanned), w.qsize())
+        print("Iteration:", i, "\tCost:", cost, "\tScanned REs:", len(scanned), "\tQueue Size:", w.qsize())
 
     '''if i % 5000 == 4999:
         w = removeOverlap(w)
