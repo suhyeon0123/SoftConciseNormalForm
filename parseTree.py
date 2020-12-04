@@ -72,23 +72,38 @@ class KleenStar(Node):
     def __init__(self, r):
         self.r = r
         self.level = 1
+        self.string = None
+        self.hasHole2 = True
     def __repr__(self):
+        if self.string:
+            return self.string
 
         if '{}'.format(self.r) == '@emptyset':
-            return '@epsilon'
+            self.string = '@epsilon'
+            return self.string
 
         if '{}'.format(self.r) == '@epsilon':
-            return '@epsilon'
+            self.string = '@epsilon'
+            return self.string
 
         if self.r.level > self.level:
-            return '({})*'.format(self.r)
+            self.string = '({})*'.format(self.r)
+            return self.string
         else:
-            return '{}*'.format(self.r)
+            self.string = '{}*'.format(self.r)
+            return self.string
 
     def hasHole(self):
-        return self.r.hasHole()
+        if not self.hasHole2:
+            return False
+
+        if not self.r.hasHole():
+            self.hasHole2 = False
+        return self.hasHole2
 
     def spread(self, case):
+        self.string = None
+
         if type(self.r)==type((Hole())):
             if type(case) != type(KleenStar(Hole())):
                 self.r = case
@@ -99,12 +114,16 @@ class KleenStar(Node):
         return self.r.spread(case)
 
     def spreadAll(self):
+        self.string = None
+
         if type(self.r) == type((Hole())):
             self.r = copy.deepcopy(KleenStar(Or(Character('0'), Character('1'))))
         else:
             self.r.spreadAll()
 
     def spreadNp(self):
+        self.string = None
+
         if type(self.r) == type((Hole())):
             self.r = Character('@emptyset')
         else:
@@ -115,7 +134,13 @@ class Concatenate(Node):
     def __init__(self, a, b):
         self.a, self.b = a, b
         self.level = 2
+        self.string = None
+        self.hasHole2 = True
+
     def __repr__(self):
+
+        if self.string:
+            return self.string
 
         def formatSide(side):
             if side.level > self.level:
@@ -124,19 +149,31 @@ class Concatenate(Node):
                 return '{}'.format(side)
 
         if '@emptyset' in repr(self.a) or '@emptyset' in repr(self.b):
-            return '@emptyset'
+            self.string = '@emptyset'
+            return self.string
 
         if '@epsilon' == repr(self.a):
-            return formatSide(self.b)
+            self.string = formatSide(self.b)
+            return self.string
         elif '@epsilon' == repr(self.b):
-            return formatSide(self.a)
+            self.string = formatSide(self.a)
+            return self.string
 
-        return formatSide(self.a) + formatSide(self.b)
+        self.string = formatSide(self.a) + formatSide(self.b)
+        return self.string
 
     def hasHole(self):
-        return self.a.hasHole() or self.b.hasHole()
+
+        if not self.hasHole2:
+            return False
+
+        self.hasHole2 = self.a.hasHole() or self.b.hasHole()
+
+        return self.hasHole2
 
     def spread(self, case):
+        self.string = None
+
         if type(self.a)==type((Hole())):
             self.a = copy.deepcopy(case)
             return True
@@ -149,6 +186,8 @@ class Concatenate(Node):
             return self.b.spread(case)
 
     def spreadAll(self):
+        self.string = None
+
         if type(self.a)==type((Hole())):
             self.a = copy.deepcopy(KleenStar(Or(Character('0'), Character('1'))))
         else:
@@ -160,6 +199,8 @@ class Concatenate(Node):
             self.b.spreadAll()
 
     def spreadNp(self):
+        self.string = None
+
         if type(self.a)==type((Hole())):
             self.a = Character('@emptyset')
         else:
@@ -174,8 +215,13 @@ class Or(Node):
     def __init__(self, a, b):
         self.a, self.b = a, b
         self.level = 3
+        self.string = None
+        self.hasHole2 = True
 
     def __repr__(self):
+
+        if self.string:
+            return self.string
 
         def formatSide(side):
             if side.level > self.level:
@@ -184,16 +230,27 @@ class Or(Node):
                 return '{}'.format(side)
 
         if repr(self.a) == '@emptyset':
-            return formatSide(self.b)
+            self.string = formatSide(self.b)
+            return self.string
         elif repr(self.b) == '@emptyset':
-            return formatSide(self.a)
+            self.string = formatSide(self.a)
+            return self.string
 
-        return formatSide(self.a) + '+' + formatSide(self.b)
+        self.string = formatSide(self.a) + '+' + formatSide(self.b)
+        return self.string
 
     def hasHole(self):
-        return self.a.hasHole() or self.b.hasHole()
+
+        if not self.hasHole2:
+            return False
+
+        self.hasHole2 = self.a.hasHole() or self.b.hasHole()
+
+        return self.hasHole2
 
     def spread(self, case):
+        self.string = None
+
         if type(self.a)==type((Hole())):
             self.a = copy.deepcopy(case)
             return True
@@ -206,6 +263,8 @@ class Or(Node):
             return self.b.spread(case)
 
     def spreadAll(self):
+        self.string = None
+
         if type(self.a)==type((Hole())):
             self.a = copy.deepcopy(KleenStar(Or(Character('0'), Character('1'))))
         else:
@@ -216,6 +275,8 @@ class Or(Node):
             self.b.spreadAll()
 
     def spreadNp(self):
+        self.string = None
+
         if type(self.a) == type((Hole())):
             self.a = Character('@emptyset')
         else:

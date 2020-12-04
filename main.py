@@ -83,11 +83,11 @@ w = PriorityQueue()
 
 scanned = set()
 
-w.put((1, Character('0')))
-w.put((1, Character('1')))
-w.put((3, Or(Hole(),Hole())))
-w.put((3, Concatenate(Hole(),Hole())))
-w.put((2, KleenStar(Hole())))
+w.put((20, Character('0')))
+w.put((20, Character('1')))
+w.put((230, Or(Hole(),Hole())))
+w.put((205, Concatenate(Hole(),Hole())))
+w.put((220, KleenStar(Hole())))
 
 
 examples = Examples(3)
@@ -99,7 +99,9 @@ i = 0
 start = time.time()
 prevCost = 0
 
-while not w.empty() and i < 10000000:
+finished = False
+
+while not w.empty() and not finished:
     tmp = w.get()
     s = tmp[1]
     cost = tmp[0]
@@ -114,7 +116,7 @@ while not w.empty() and i < 10000000:
     #and not isPrune(s, examples)
     if hasHole :
 
-        for j, new_elem in enumerate([Character('0'), Character('1'), Character('@epsilon'), Character('@emptyset'), Or(Hole(), Hole()), Concatenate(Hole(), Hole()), KleenStar(Hole())]):
+        for j, new_elem in enumerate([Character('0'), Character('1'), Or(Hole(), Hole()), Concatenate(Hole(), Hole()), KleenStar(Hole())]):
 
             k = copy.deepcopy(s)
 
@@ -133,25 +135,33 @@ while not w.empty() and i < 10000000:
                 #print(repr(k), "is ndead")
                 continue
 
-            if(repr(k) == '0(0+1)*'):
-                print(repr(k), cost)
+            #if(repr(k) == '0(0+1)*'):
+            #    print(repr(k), cost)
+
+            if not k.hasHole():
+                if is_solution(repr(k), examples):
+                    end = time.time()
+                    print(end-start)
+                    print("result:", repr(k))
+                    finished = True
+                    break
 
 
-            if j<4:
-                w.put((cost, k))
-            elif j==4: # Union
-                w.put((cost+2, k))
-            elif j==5: # Concatenation
-                w.put((cost+2, k))
+            if j<2:
+                w.put((cost - 80, k))
+            elif j==2: # Union
+                w.put((cost + 130, k))
+            elif j==3: # Concatenation
+                w.put((cost + 105, k))
             else: # Kleene Star
-                w.put((cost+1, k))
+                w.put((cost + 20, k))
 
 
-    elif is_solution(repr(s), examples):
-        end = time.time()
-        print(end-start)
-        print("result:", s)
-        break
+    #elif is_solution(repr(s), examples):
+    #    end = time.time()
+    #    print(end-start)
+    #    print("result:", s)
+    #    break
     #else:
     #    print("Not a solution:", s)
 
