@@ -9,6 +9,8 @@ import copy
 from prune import *
 import sys
 
+import random
+
 sys.setrecursionlimit(5000000)
 
 import faulthandler
@@ -17,17 +19,82 @@ faulthandler.enable()
 
 
 def is_solution(s, examples):
-    it = iter(examples.getPos())
-    for i in it:
-        if not str2regexp(s).evalWordP(i):
+
+    if s == '@emptyset':
+        return False
+    
+
+
+    for string in examples.getPos():
+        while 'X' in string:
+            if random.random() > 0.5:
+                string = string.replace(string, '0', 1)
+            else:
+                string = string.replace(string, '1', 1)
+        
+        if not str2regexp(s).evalWordP(string):
             return False
 
-    it = iter(examples.getNeg())
-    for i in it:
-        if str2regexp(s).evalWordP(i):
+    for string in examples.getNeg():
+        while 'X' in string:
+            if random.random() > 0.5:
+                string = string.replace(string, '0', 1)
+            else:
+                string = string.replace(string, '1', 1)
+        
+        if str2regexp(s).evalWordP(string):
             return False
 
     return True
+
+def is_pdead(s, examples):
+
+    s2 = copy.deepcopy(s)
+    s2.spreadAll()
+    s = repr(s2)
+    
+    
+
+    if s == '@emptyset':
+        return True
+
+    for string in examples.getPos():
+        while 'X' in string:
+            if random.random() > 0.5:
+                string = string.replace(string, '0', 1)
+            else:
+                string = string.replace(string, '1', 1)
+        
+        if not str2regexp(s).evalWordP(string):
+            return True
+
+    return False
+
+def is_ndead(s, examples):
+
+    s2 = copy.deepcopy(s)
+    s2.spreadNp()
+    s = repr(s2)
+    
+
+
+    if s == '@emptyset':
+        return False
+
+    for string in examples.getNeg():
+        
+        while 'X' in string:
+            if random.random() > 0.5:
+                string = string.replace(string, '0', 1)
+            else:
+                string = string.replace(string, '1', 1)
+        
+        if str2regexp(s).evalWordP(string):
+            return True
+
+    return False
+
+
 
 
 #can compare when String , but object cant compare
@@ -49,58 +116,91 @@ w = PriorityQueue()
 
 scanned = set()
 
-w.put((1, Character('0')))
-w.put((1, Character('1')))
-w.put((1, Or(Hole(),Hole())))
-w.put((1, Concatenate(Hole(),Hole())))
-w.put((1, KleenStar(Hole())))
+w.put((20, Character('0')))
+w.put((20, Character('1')))
+w.put((230, Or(Hole(),Hole())))
+w.put((205, Concatenate(Hole(),Hole())))
+w.put((220, KleenStar(Hole())))
 
 
-
-examples = Examples(3)
+examples = Examples(8)
 answer = examples.getAnswer()
+
+print(examples.getPos(), examples.getNeg())
 
 i = 0
 start = time.time()
+prevCost = 0
 
-while not w.empty() and i < 1000000:
+finished = False
+
+while not w.empty() and not finished:
     tmp = w.get()
     s = tmp[1]
     cost = tmp[0]
-    if i == 35120:
-        print("dd")
-    print(s, w.qsize(), cost)
+    #print(s, w.qsize(), cost)
+    #if cost > prevCost:
+    #    scanned.clear()
+
+    prevCost = cost
+
+    hasHole = s.hasHole()
 
     #and not isPrune(s, examples)
-    if s.hasHole() :
+    if hasHole :
 
-        for i, new_elem in enumerate([Character('0'), Character('1'), Or(Hole(), Hole()), Concatenate(Hole(), Hole()), KleenStar(Hole())]):
+        for j, new_elem in enumerate([Character('0'), Character('1'), Or(Hole(), Hole()), Concatenate(Hole(), Hole()), KleenStar(Hole())]):
+
             k = copy.deepcopy(s)
-            k.spread(copy.deepcopy(new_elem))
 
-            if k.__repr__ in scanned:
+            k.spread(new_elem)
+
+            if repr(k) in scanned:
                 continue
             else:
-                scanned.add(k.__repr__)
+                scanned.add(repr(k))
 
-            if i<2:
-                w.put((cost + 1, k))
-            elif i==2: # Union
-                w.put((cost+1, k))
-            elif i==3: # Concatenation
-                w.put((cost+1, k))
+            if is_pdead(k, examples):
+                #print(repr(k), "is pdead")
+                continue
+
+            if is_ndead(k, examples):
+                #print(repr(k), "is ndead")
+                continue
+
+            #if(repr(k) == '0(0+1)*'):
+            #    print(repr(k), cost)
+
+            if not k.hasHole():
+                if is_solution(repr(k), examples):
+                    end = time.time()
+                    print("Spent computation time:", end-start)
+                    print("Result RE:", repr(k))
+                    finished = True
+                    break
+
+
+            if j<2:
+                w.put((cost - 80, k))
+            elif j==2: # Union
+                w.put((cost + 130, k))
+            elif j==3: # Concatenation
+                w.put((cost + 105, k))
             else: # Kleene Star
-                w.put((cost+1, k))
+                w.put((cost + 20, k))
 
 
-    elif not s.hasHole() and is_solution(repr(s), examples):
-        end = time.time()
-        print(end-start)
-        print("result:", s)
-        break
-    else:
-        print("Not a solution:", s)
+    #elif is_solution(repr(s), examples):
+    #    end = time.time()
+    #    print(end-start)
+    #    print("result:", s)
+    #    break
+    #else:
+    #    print("Not a solution:", s)
 
+
+    if i % 100 == 0:
+        print("Iteration:", i, "\tCost:", cost, "\tScanned REs:", len(scanned), "\tQueue Size:", w.qsize())
 
     '''if i % 5000 == 4999:
         w = removeOverlap(w)

@@ -117,7 +117,7 @@ class KleenStar(Node):
         self.string = None
 
         if type(self.r) == type((Hole())):
-            self.r = copy.deepcopy(KleenStar(Or(Character('0'), Character('1'))))
+            self.r = copy.deepcopy(Or(Character('0'), Character('1')))
         else:
             self.r.spreadAll()
 
@@ -236,7 +236,7 @@ class Or(Node):
             self.string = formatSide(self.a)
             return self.string
 
-        self.string = formatSide(self.a) + '+' + formatSide(self.b)
+        self.string = formatSide(self.a) + '|' + formatSide(self.b)
         return self.string
 
     def hasHole(self):

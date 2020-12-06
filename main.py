@@ -9,6 +9,10 @@ import copy
 from prune import *
 import sys
 
+import random
+import re2 as re
+#import re
+
 sys.setrecursionlimit(5000000)
 
 import faulthandler
@@ -16,17 +20,40 @@ import faulthandler
 faulthandler.enable()
 
 
-def is_solution(s, examples):
+def membership(regex, string):
+    #print(regex)
+    # print(regex, string)
+    return bool(re.fullmatch(regex, string))
 
-    if s == '@emptyset':
+def membership2(regex, string):
+    return str2regexp(regex).evalWordP(string)
+
+
+def is_solution(regex, examples, membership):
+
+    if regex == '@emptyset':
         return False
 
-    for i in examples.getPos():
-        if not str2regexp(s).evalWordP(i):
+
+
+    for string in examples.getPos():
+        while 'X' in string:
+            if random.random() > 0.5:
+                string = string.replace(string, '0', 1)
+            else:
+                string = string.replace(string, '1', 1)
+
+        if not membership(regex, string):
             return False
 
-    for i in examples.getNeg():
-        if str2regexp(s).evalWordP(i):
+    for string in examples.getNeg():
+        while 'X' in string:
+            if random.random() > 0.5:
+                string = string.replace(string, '0', 1)
+            else:
+                string = string.replace(string, '1', 1)
+
+        if membership(regex, string):
             return False
 
     return True
@@ -40,8 +67,14 @@ def is_pdead(s, examples):
     if s == '@emptyset':
         return True
 
-    for i in examples.getPos():
-        if not str2regexp(s).evalWordP(i):
+    for string in examples.getPos():
+        while 'X' in string:
+            if random.random() > 0.5:
+                string = string.replace(string, '0', 1)
+            else:
+                string = string.replace(string, '1', 1)
+
+        if not membership(s, string):
             return True
 
     return False
@@ -52,11 +85,20 @@ def is_ndead(s, examples):
     s2.spreadNp()
     s = repr(s2)
 
+
+
     if s == '@emptyset':
         return False
 
-    for i in examples.getNeg():
-        if str2regexp(s).evalWordP(i):
+    for string in examples.getNeg():
+
+        while 'X' in string:
+            if random.random() > 0.5:
+                string = string.replace(string, '0', 1)
+            else:
+                string = string.replace(string, '1', 1)
+
+        if membership(s, string):
             return True
 
     return False
@@ -90,7 +132,7 @@ w.put((205, Concatenate(Hole(),Hole())))
 w.put((220, KleenStar(Hole())))
 
 
-examples = Examples(5)
+examples = Examples(4)
 answer = examples.getAnswer()
 
 print(examples.getPos(), examples.getNeg())
@@ -139,10 +181,10 @@ while not w.empty() and not finished:
             #    print(repr(k), cost)
 
             if not k.hasHole():
-                if is_solution(repr(k), examples):
+                if is_solution(repr(k), examples, membership):
                     end = time.time()
                     print("Spent computation time:", end-start)
-                    print("Result RE:", repr(k))
+                    print("Result RE:", repr(k), "Verified by FAdo:", is_solution(repr(k), examples, membership2))
                     finished = True
                     break
 
