@@ -8,6 +8,7 @@ from parseTree import *
 import copy
 from prune import *
 import sys
+import configparser
 
 import random
 import re2 as re
@@ -19,6 +20,9 @@ import faulthandler
 
 faulthandler.enable()
 
+config = configparser.ConfigParser()
+config.read('config.ini')
+config = config['default']
 
 def membership(regex, string):
     #print(regex)
@@ -125,14 +129,15 @@ w = PriorityQueue()
 
 scanned = set()
 
-w.put((20, Character('0')))
-w.put((20, Character('1')))
-w.put((230, Or(Hole(),Hole())))
-w.put((205, Concatenate(Hole(),Hole())))
-w.put((220, KleenStar(Hole())))
+w.put((int(config['SYMBOL_COST']), Character('0')))
+w.put((int(config['SYMBOL_COST']), Character('1')))
+w.put((int(config['HOLE_COST']) * 2 + int(config['UNION_COST']), Or(Hole(),Hole())))
+w.put((int(config['HOLE_COST']) * 2 + int(config['CONCAT_COST']), Concatenate(Hole(),Hole())))
+w.put((int(config['HOLE_COST']) + int(config['CLOSURE_COST']), KleenStar(Hole())))
+w.put((int(config['HOLE_COST']) + int(config['CLOSURE_COST']), Question(Hole())))
 
 
-examples = Examples(4)
+examples = Examples(29)
 answer = examples.getAnswer()
 
 print(examples.getPos(), examples.getNeg())
@@ -147,22 +152,19 @@ while not w.empty() and not finished:
     tmp = w.get()
     s = tmp[1]
     cost = tmp[0]
-    #print(s, w.qsize(), cost)
-    #if cost > prevCost:
-    #    scanned.clear()
 
     prevCost = cost
 
     hasHole = s.hasHole()
 
-    #and not isPrune(s, examples)
     if hasHole :
 
-        for j, new_elem in enumerate([Character('0'), Character('1'), Or(Hole(), Hole()), Concatenate(Hole(), Hole()), KleenStar(Hole())]):
+        for j, new_elem in enumerate([Character('0'), Character('1'), Or(Hole(), Hole()), Concatenate(Hole(), Hole()), KleenStar(Hole()), Question(Hole())]):
 
             k = copy.deepcopy(s)
 
-            k.spread(new_elem)
+            if not k.spread(new_elem):
+                continue
 
             if repr(k) in scanned:
                 continue
@@ -184,19 +186,20 @@ while not w.empty() and not finished:
                 if is_solution(repr(k), examples, membership):
                     end = time.time()
                     print("Spent computation time:", end-start)
-                    print("Result RE:", repr(k), "Verified by FAdo:", is_solution(repr(k), examples, membership2))
+                    # print("Result RE:", repr(k), "Verified by FAdo:", is_solution(repr(k), examples, membership2))
+                    print("Result RE:", repr(k))
                     finished = True
                     break
 
 
             if j<2:
-                w.put((cost - 80, k))
+                w.put((cost - int(config['HOLE_COST']) + int(config['SYMBOL_COST']), k))
             elif j==2: # Union
-                w.put((cost + 130, k))
+                w.put((cost + int(config['HOLE_COST']) + int(config['UNION_COST']) , k))
             elif j==3: # Concatenation
-                w.put((cost + 105, k))
+                w.put((cost + int(config['HOLE_COST']) + int(config['CONCAT_COST']) , k))
             else: # Kleene Star
-                w.put((cost + 20, k))
+                w.put((cost + int(config['CLOSURE_COST']) , k))
 
 
     #elif is_solution(repr(s), examples):
@@ -208,7 +211,7 @@ while not w.empty() and not finished:
     #    print("Not a solution:", s)
 
 
-    if i % 100 == 0:
+    if i % 1000 == 0:
         print("Iteration:", i, "\tCost:", cost, "\tScanned REs:", len(scanned), "\tQueue Size:", w.qsize())
 
     '''if i % 5000 == 4999:

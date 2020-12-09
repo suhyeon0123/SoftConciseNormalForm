@@ -23,6 +23,10 @@ class Hole(Node):
         return copy.deepcopy(KleenStar(Or(Character('0'), Character('1'))))
     def spreadNp(self):
         return Character('@emptyset')
+    def unroll(self):
+        return
+    def split(self):
+        return
 
 
 class Epsilon(Node):
@@ -38,6 +42,11 @@ class Epsilon(Node):
         return
     def spreadNp(self):
         return
+    def unroll(self):
+        return
+    def split(self):
+        return
+
 
 class EpsilonBlank(Node):
     def __init__(self):
@@ -52,6 +61,11 @@ class EpsilonBlank(Node):
         return
     def spreadNp(self):
         return
+    def unroll(self):
+        return
+    def split(self):
+        return
+
 
 class Character(Node):
     def __init__(self, c):
@@ -67,6 +81,11 @@ class Character(Node):
         return self.c
     def spreadNp(self):
         return self.c
+    def unroll(self):
+        return
+    def split(self):
+        return
+
 
 class KleenStar(Node):
     def __init__(self, r):
@@ -105,7 +124,7 @@ class KleenStar(Node):
         self.string = None
 
         if type(self.r)==type((Hole())):
-            if type(case) != type(KleenStar(Hole())):
+            if type(case) != type(KleenStar(Hole())) and type(case) != type(Question(Hole())):
                 self.r = case
                 return True
             else:
@@ -128,6 +147,79 @@ class KleenStar(Node):
             self.r = Character('@emptyset')
         else:
             self.r.spreadNp()
+
+    def unroll(self):
+        return
+    def split(self):
+        return
+
+
+class Question(Node):
+    def __init__(self, r):
+        self.r = r
+        self.level = 1
+        self.string = None
+        self.hasHole2 = True
+    def __repr__(self):
+        if self.string:
+            return self.string
+
+        if '{}'.format(self.r) == '@emptyset':
+            self.string = '@epsilon'
+            return self.string
+
+        if '{}'.format(self.r) == '@epsilon':
+            self.string = '@epsilon'
+            return self.string
+
+        if self.r.level > self.level:
+            self.string = '({})?'.format(self.r)
+            return self.string
+        else:
+            self.string = '{}?'.format(self.r)
+            return self.string
+
+    def hasHole(self):
+        if not self.hasHole2:
+            return False
+
+        if not self.r.hasHole():
+            self.hasHole2 = False
+        return self.hasHole2
+
+    def spread(self, case):
+        self.string = None
+
+        if type(self.r)==type((Hole())):
+            if type(case) != type(KleenStar(Hole())) and type(case) != type(Question(Hole())):
+                self.r = case
+                return True
+            else:
+                return False
+
+        return self.r.spread(case)
+
+    def spreadAll(self):
+        self.string = None
+
+        if type(self.r) == type((Hole())):
+            self.r = copy.deepcopy(KleenStar(Or(Character('0'), Character('1'))))
+
+        else:
+            self.r.spreadAll()
+
+    def spreadNp(self):
+        self.string = None
+
+        if type(self.r) == type((Hole())):
+            self.r = Character('@emptyset')
+        else:
+            self.r.spreadNp()
+
+    def unroll(self):
+        return
+    def split(self):
+        return
 
 
 class Concatenate(Node):
@@ -211,6 +303,12 @@ class Concatenate(Node):
         else:
             self.b.spreadNp()
 
+    def unroll(self):
+        return
+    def split(self):
+        return
+
+
 class Or(Node):
     def __init__(self, a, b):
         self.a, self.b = a, b
@@ -255,6 +353,9 @@ class Or(Node):
             self.a = copy.deepcopy(case)
             return True
         elif type(self.b)==type((Hole())):
+            if type(self.a) == type(Character('')) and type(case) == type(Character('')):
+                if self.a.c == case.c:
+                    return False
             self.b = copy.deepcopy(case)
             return True
         if self.a.spread(case):
@@ -285,3 +386,10 @@ class Or(Node):
             self.b = Character('@emptyset')
         else:
             self.b.spreadNp()
+
+    def unroll(self):
+        return
+    def split(self):
+        return
+
+
