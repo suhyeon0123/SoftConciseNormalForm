@@ -39,23 +39,22 @@ def is_solution(regex, examples, membership):
         return False
 
 
-
     for string in examples.getPos():
-        while 'X' in string:
+        '''while 'X' in string:
             if random.random() > 0.5:
                 string = string.replace(string, '0', 1)
             else:
-                string = string.replace(string, '1', 1)
+                string = string.replace(string, '1', 1)'''
 
         if not membership(regex, string):
             return False
 
     for string in examples.getNeg():
-        while 'X' in string:
+        '''while 'X' in string:
             if random.random() > 0.5:
                 string = string.replace(string, '0', 1)
             else:
-                string = string.replace(string, '1', 1)
+                string = string.replace(string, '1', 1)'''
 
         if membership(regex, string):
             return False
@@ -72,11 +71,11 @@ def is_pdead(s, examples):
         return True
 
     for string in examples.getPos():
-        while 'X' in string:
+        '''while 'X' in string:
             if random.random() > 0.5:
                 string = string.replace(string, '0', 1)
             else:
-                string = string.replace(string, '1', 1)
+                string = string.replace(string, '1', 1)'''
 
         if not membership(s, string):
             return True
@@ -90,27 +89,73 @@ def is_ndead(s, examples):
     s = repr(s2)
 
 
-
     if s == '@emptyset':
         return False
 
     for string in examples.getNeg():
 
-        while 'X' in string:
+        '''while 'X' in string:
             if random.random() > 0.5:
                 string = string.replace(string, '0', 1)
             else:
-                string = string.replace(string, '1', 1)
+                string = string.replace(string, '1', 1)'''
+
+        '''while 'X' in string:
+            if random.random() > 0.5:
+                string = string.replace('X', '0', 1)
+            else:
+                string = string.replace('X', '1', 1)'''
 
         if membership(s, string):
             return True
 
     return False
 
+def is_redundant(s, examples):
+
+    s2 = copy.deepcopy(s)
+    s2.unroll()
+    s3 = copy.deepcopy(s2)
 
 
+    prev = [s3]
+    next = []
 
-#can compare when String , but object cant compare
+
+    while prev:
+
+        t = prev.pop()
+        if '|' in repr(t):
+            t2 = copy.deepcopy(t)
+            t2.split(0)
+            t3 = copy.deepcopy(t)
+            t3.split(0)
+
+            prev.append(copy.deepcopy(t2))
+            prev.append(copy.deepcopy(t3))
+        else:
+            next.append(copy.deepcopy(t.spreadAll()))
+
+    for state in next:
+        count = 0
+        for string in examples.getPos():
+            if membership(repr(state), string):
+                break
+            count = count+1
+
+        if count == len(examples.getPos()):
+            return True
+
+    return False
+
+'''    s = repr(s3)
+    for string in examples.getPos():
+        if membership(s, string):
+            return False
+    return True'''
+
+
+'''#can compare when String , but object cant compare
 def removeOverlap(w) :
     new = PriorityQueue()
     now = w.get()
@@ -122,7 +167,7 @@ def removeOverlap(w) :
             new.put(now)
     return new
 
-#---------------------------
+#---------------------------'''
 
 
 w = PriorityQueue()
@@ -137,7 +182,7 @@ w.put((int(config['HOLE_COST']) + int(config['CLOSURE_COST']), KleenStar(Hole())
 w.put((int(config['HOLE_COST']) + int(config['CLOSURE_COST']), Question(Hole())))
 
 
-examples = Examples(29)
+examples = Examples(3)
 answer = examples.getAnswer()
 
 print(examples.getPos(), examples.getNeg())
@@ -163,8 +208,11 @@ while not w.empty() and not finished:
 
             k = copy.deepcopy(s)
 
+
             if not k.spread(new_elem):
                 continue
+
+            #print(repr(k))
 
             if repr(k) in scanned:
                 continue
@@ -179,8 +227,10 @@ while not w.empty() and not finished:
                 #print(repr(k), "is ndead")
                 continue
 
-            #if(repr(k) == '0(0+1)*'):
-            #    print(repr(k), cost)
+            '''if is_redundant(k, examples):
+                print(repr(k), "is redundant")
+                continue'''
+
 
             if not k.hasHole():
                 if is_solution(repr(k), examples, membership):
