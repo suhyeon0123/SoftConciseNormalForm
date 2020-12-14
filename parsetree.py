@@ -2,23 +2,15 @@
 import sys
 import copy
 
-class Node:
-    def __lt__(self, other):
-        return False
-    # All nodes have the following field and method:
-    # level - stores prededence information to inform us of when to add parenthesis when pretty pritting
-    # __repr__ - prints the regex represented by the parse tree with with any uneccearry parens removed
-    pass
-
-class Hole(Node):
+class Hole:
     def __init__(self):
         self.level = 0
     def __repr__(self):
         return '#'
     def hasHole(self):
         return True
-    def spread(self):
-        return
+    def spread(self, case):
+        return False
     def spreadAll(self):
         return copy.deepcopy(KleenStar(Or(Character('0'), Character('1'))))
     def spreadNp(self):
@@ -29,7 +21,49 @@ class Hole(Node):
         return
 
 
-class Epsilon(Node):
+
+class RE:
+    def __lt__(self, other):
+        return False
+    def __init__(self, r=Hole()):
+        self.r = r
+        self.hasHole2 = True
+        self.string = None
+        self.first = True
+
+    def __repr__(self):
+        if not self.string:
+            self.string = repr(self.r)
+
+        return self.string
+    def hasHole(self):
+        if not self.hasHole2:
+            return False
+        if not self.r.hasHole():
+            self.hasHole2 = False
+        return self.hasHole2
+    def spread(self, case):
+        self.string = None
+
+        if self.first:
+            self.r = copy.deepcopy(case)
+            self.first = False
+            return True
+        else:
+            return self.r.spread(case)
+    def spreadAll(self):
+        self.string = None
+        self.r.spreadAll()
+    def spreadNp(self):
+        self.string = None
+        self.r.spreadNp()
+    def unroll(self):
+        return
+    def split(self):
+        return
+
+
+class Epsilon(RE):
     def __init__(self):
         self.level = 0
     def __repr__(self):
@@ -48,7 +82,7 @@ class Epsilon(Node):
         return
 
 
-class EpsilonBlank(Node):
+class EpsilonBlank(RE):
     def __init__(self):
         self.level = 0
     def __repr__(self):
@@ -67,7 +101,7 @@ class EpsilonBlank(Node):
         return
 
 
-class Character(Node):
+class Character(RE):
     def __init__(self, c):
         self.c = c
         self.level = 0
@@ -87,8 +121,8 @@ class Character(Node):
         return
 
 
-class KleenStar(Node):
-    def __init__(self, r):
+class KleenStar(RE):
+    def __init__(self, r=Hole()):
         self.r = r
         self.level = 1
         self.string = None
@@ -154,8 +188,8 @@ class KleenStar(Node):
         return
 
 
-class Question(Node):
-    def __init__(self, r):
+class Question(RE):
+    def __init__(self, r=Hole()):
         self.r = r
         self.level = 1
         self.string = None
@@ -222,8 +256,8 @@ class Question(Node):
         return
 
 
-class Concatenate(Node):
-    def __init__(self, a, b):
+class Concatenate(RE):
+    def __init__(self, a=Hole(), b=Hole()):
         self.a, self.b = a, b
         self.level = 2
         self.string = None
@@ -309,8 +343,8 @@ class Concatenate(Node):
         return
 
 
-class Or(Node):
-    def __init__(self, a, b):
+class Or(RE):
+    def __init__(self, a=Hole(), b=Hole()):
         self.a, self.b = a, b
         self.level = 3
         self.string = None

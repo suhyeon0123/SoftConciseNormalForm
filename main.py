@@ -1,18 +1,31 @@
-from FAdo.reex import *
-from FAdo.fa import *
-# from FAdo.fio import *
 from queue import PriorityQueue
 import time
 from examples import Examples
-from parseTree import *
+#from parsetree import *
 import copy
-from prune import *
+#from prune import *
 import sys
 import configparser
 
-import random
-import re2 as re
+
 #import re
+from util import *
+import argparse
+
+
+parser = argparse.ArgumentParser()
+parser.add_argument("-e", "--examples", type=int,
+                    help="Example number")
+parser.add_argument("-u", "--unambiguous", help="Set ambiguity",
+                    action="store_true")
+args = parser.parse_args()
+
+
+if args.unambiguous:
+    from unambiguous_parsetree import *
+else:
+    from parsetree import *
+
 
 sys.setrecursionlimit(5000000)
 
@@ -24,125 +37,21 @@ config = configparser.ConfigParser()
 config.read('config.ini')
 config = config['default']
 
-def membership(regex, string):
-    #print(regex)
-    # print(regex, string)
-    return bool(re.fullmatch(regex, string))
-
-def membership2(regex, string):
-    return str2regexp(regex).evalWordP(string)
-
-
-def is_solution(regex, examples, membership):
-
-    if regex == '@emptyset':
-        return False
-
-
-
-    for string in examples.getPos():
-        while 'X' in string:
-            if random.random() > 0.5:
-                string = string.replace(string, '0', 1)
-            else:
-                string = string.replace(string, '1', 1)
-
-        if not membership(regex, string):
-            return False
-
-    for string in examples.getNeg():
-        while 'X' in string:
-            if random.random() > 0.5:
-                string = string.replace(string, '0', 1)
-            else:
-                string = string.replace(string, '1', 1)
-
-        if membership(regex, string):
-            return False
-
-    return True
-
-def is_pdead(s, examples):
-
-    s2 = copy.deepcopy(s)
-    s2.spreadAll()
-    s = repr(s2)
-
-    if s == '@emptyset':
-        return True
-
-    for string in examples.getPos():
-        while 'X' in string:
-            if random.random() > 0.5:
-                string = string.replace(string, '0', 1)
-            else:
-                string = string.replace(string, '1', 1)
-
-        if not membership(s, string):
-            return True
-
-    return False
-
-def is_ndead(s, examples):
-
-    s2 = copy.deepcopy(s)
-    s2.spreadNp()
-    s = repr(s2)
-
-
-
-    if s == '@emptyset':
-        return False
-
-    for string in examples.getNeg():
-
-        while 'X' in string:
-            if random.random() > 0.5:
-                string = string.replace(string, '0', 1)
-            else:
-                string = string.replace(string, '1', 1)
-
-        if membership(s, string):
-            return True
-
-    return False
-
-
-
-
-#can compare when String , but object cant compare
-def removeOverlap(w) :
-    new = PriorityQueue()
-    now = w.get()
-    new.put(now)
-    while not w.empty():
-        tmp = w.get()
-        if not now.__repr__()==tmp.__repr__():
-            now = tmp
-            new.put(now)
-    return new
-
-#---------------------------
 
 
 w = PriorityQueue()
 
 scanned = set()
 
-w.put((int(config['SYMBOL_COST']), Character('0')))
-w.put((int(config['SYMBOL_COST']), Character('1')))
-w.put((int(config['HOLE_COST']) * 2 + int(config['UNION_COST']), Or(Hole(),Hole())))
-w.put((int(config['HOLE_COST']) * 2 + int(config['CONCAT_COST']), Concatenate(Hole(),Hole())))
-w.put((int(config['HOLE_COST']) + int(config['CLOSURE_COST']), KleenStar(Hole())))
-w.put((int(config['HOLE_COST']) + int(config['CLOSURE_COST']), Question(Hole())))
+w.put((int(config['HOLE_COST']), RE()))
 
-
-examples = Examples(29)
+examples = Examples(args.examples)
 answer = examples.getAnswer()
 
 print(examples.getPos(), examples.getNeg())
 
 i = 0
+traversed = 1
 start = time.time()
 prevCost = 0
 
@@ -159,17 +68,23 @@ while not w.empty() and not finished:
 
     if hasHole :
 
-        for j, new_elem in enumerate([Character('0'), Character('1'), Or(Hole(), Hole()), Concatenate(Hole(), Hole()), KleenStar(Hole()), Question(Hole())]):
+        for j, new_elem in enumerate([Character('0'), Character('1'), Or(), Concatenate(), KleenStar(), Question()]):
+
+            # print(repr(s), repr(new_elem))
 
             k = copy.deepcopy(s)
 
             if not k.spread(new_elem):
                 continue
 
+            traversed += 1
             if repr(k) in scanned:
+                # print("Already scanned?", repr(k))
+                # print(list(scanned))
                 continue
             else:
                 scanned.add(repr(k))
+
 
             if is_pdead(k, examples):
                 #print(repr(k), "is pdead")
@@ -179,6 +94,7 @@ while not w.empty() and not finished:
                 #print(repr(k), "is ndead")
                 continue
 
+
             #if(repr(k) == '0(0+1)*'):
             #    print(repr(k), cost)
 
@@ -186,6 +102,7 @@ while not w.empty() and not finished:
                 if is_solution(repr(k), examples, membership):
                     end = time.time()
                     print("Spent computation time:", end-start)
+                    print("Iteration:", i, "\tCost:", cost, "\tScanned REs:", len(scanned), "\tQueue Size:", w.qsize(), "\tTraversed:", traversed)
                     # print("Result RE:", repr(k), "Verified by FAdo:", is_solution(repr(k), examples, membership2))
                     print("Result RE:", repr(k))
                     finished = True
@@ -212,7 +129,7 @@ while not w.empty() and not finished:
 
 
     if i % 1000 == 0:
-        print("Iteration:", i, "\tCost:", cost, "\tScanned REs:", len(scanned), "\tQueue Size:", w.qsize())
+        print("Iteration:", i, "\tCost:", cost, "\tScanned REs:", len(scanned), "\tQueue Size:", w.qsize(), "\tTraversed:", traversed)
 
     '''if i % 5000 == 4999:
         w = removeOverlap(w)

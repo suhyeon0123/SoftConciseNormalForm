@@ -2,11 +2,29 @@ from queue import PriorityQueue
 import time
 from examples import Examples
 #from parsetree import *
-from unambiguous_parsetree import *
 import copy
 #from prune import *
 import sys
 import configparser
+
+
+#import re
+from util import *
+import argparse
+
+
+parser = argparse.ArgumentParser()
+parser.add_argument("-e", "--examples", type=int,
+                    help="Example number")
+parser.add_argument("-u", "--unambiguous", help="Set ambiguity",
+                    action="store_true")
+args = parser.parse_args()
+
+
+if args.unambiguous:
+    from unambiguous_parsetree import *
+else:
+    from parsetree import *
 
 
 sys.setrecursionlimit(5000000)
@@ -25,15 +43,9 @@ w = PriorityQueue()
 
 scanned = set()
 
-w.put((int(config['SYMBOL_COST']), Character('0')))
-w.put((int(config['SYMBOL_COST']), Character('1')))
-w.put((int(config['HOLE_COST']) * 2 + int(config['UNION_COST']), Or(Hole(),Hole())))
-w.put((int(config['HOLE_COST']) * 2 + int(config['CONCAT_COST']), Concatenate(Hole(),Hole())))
-w.put((int(config['HOLE_COST']) + int(config['CLOSURE_COST']), KleenStar(Hole())))
-w.put((int(config['HOLE_COST']) + int(config['CLOSURE_COST']), Question(Hole())))
+w.put((int(config['HOLE_COST']), RE()))
 
-
-examples = Examples(31)
+examples = Examples(args.examples)
 answer = examples.getAnswer()
 
 print(examples.getPos(), examples.getNeg())
@@ -55,7 +67,7 @@ while not w.empty() and not finished:
 
     if hasHole :
 
-        for j, new_elem in enumerate([Character('0'), Character('1'), Or(Hole(), Hole()), Concatenate(Hole(), Hole()), KleenStar(Hole()), Question(Hole())]):
+        for j, new_elem in enumerate([Character('0'), Character('1'), Or(), Concatenate(), KleenStar(), Question()]):
 
             k = copy.deepcopy(s)
 
@@ -67,6 +79,7 @@ while not w.empty() and not finished:
             else:
                 scanned.add(repr(k))
 
+
             if is_pdead(k, examples):
                 #print(repr(k), "is pdead")
                 continue
@@ -74,6 +87,7 @@ while not w.empty() and not finished:
             if is_ndead(k, examples):
                 #print(repr(k), "is ndead")
                 continue
+
 
             #if(repr(k) == '0(0+1)*'):
             #    print(repr(k), cost)
