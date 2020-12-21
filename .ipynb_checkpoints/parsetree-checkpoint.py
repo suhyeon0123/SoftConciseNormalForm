@@ -17,8 +17,8 @@ class Hole:
         return Character('@emptyset')
     def unroll(self):
         return
-    def split(self):
-        return
+    def split(self, side):
+        return False
 
 
 
@@ -78,8 +78,8 @@ class Epsilon(RE):
         return
     def unroll(self):
         return
-    def split(self):
-        return
+    def split(self, side):
+        return False
 
 
 class EpsilonBlank(RE):
@@ -97,8 +97,8 @@ class EpsilonBlank(RE):
         return
     def unroll(self):
         return
-    def split(self):
-        return
+    def split(self, side):
+        return False
 
 
 class Character(RE):
@@ -117,8 +117,8 @@ class Character(RE):
         return self.c
     def unroll(self):
         return
-    def split(self):
-        return
+    def split(self, side):
+        return False
 
 
 class KleenStar(RE):
@@ -184,8 +184,22 @@ class KleenStar(RE):
 
     def unroll(self):
         return
-    def split(self):
-        return
+
+    def split(self, side):
+        if type(self.r) == type(Or(Hole(),Hole())):
+            if side==0:
+                s1 = copy.deepcopy(self.r.a)
+
+                self.r = copy.deepcopy(s1)
+                self.string = None
+                return True
+            else:
+                s2 = copy.deepcopy(self.r.b)
+
+                self.r = copy.deepcopy(s2)
+                self.string = None
+                return True
+        return False
 
 
 class Question(RE):
@@ -251,9 +265,25 @@ class Question(RE):
             self.r.spreadNp()
 
     def unroll(self):
-        return
-    def split(self):
-        return
+        if not self.r.hasHole():
+            self.r.unroll()
+
+    def split(self,side):
+        if type(self.r) == type(Or(Hole(), Hole())):
+            if side == 0:
+                s1 = copy.deepcopy(self.r.a)
+
+                self.r = copy.deepcopy(s1)
+                self.string = None
+                return True
+            else:
+                s2 = copy.deepcopy(self.r.b)
+
+                self.r = copy.deepcopy(s2)
+                self.string = None
+                return True
+        return False
+
 
 
 class Concatenate(RE):
@@ -262,6 +292,7 @@ class Concatenate(RE):
         self.level = 2
         self.string = None
         self.hasHole2 = True
+
 
     def __repr__(self):
 
@@ -338,9 +369,70 @@ class Concatenate(RE):
             self.b.spreadNp()
 
     def unroll(self):
-        return
-    def split(self):
-        return
+
+        if type(self.a) == type(KleenStar(Hole())) and not self.a.hasHole():
+            s1 = copy.deepcopy(self.a.r)
+            s2 = copy.deepcopy(self.a.r)
+            s3 = copy.deepcopy(self.a)
+
+            self.a = copy.deepcopy(Concatenate(Concatenate(s1, s2), s3))
+            self.string = None
+
+            self.a.a.unroll()
+            self.a.b.unroll()
+
+        elif not self.a.hasHole():
+            self.a.unroll()
+
+
+        if type(self.b) == type(KleenStar(Hole())) and not self.b.hasHole():
+            t1 = copy.deepcopy(self.b.r)
+            t2 = copy.deepcopy(self.b.r)
+            t3 = copy.deepcopy(self.b)
+
+            self.b = copy.deepcopy(Concatenate(Concatenate(t1, t2), t3))
+            self.string = None
+
+            self.b.a.unroll()
+            self.b.b.unroll()
+
+        elif not self.b.hasHole():
+            self.b.unroll()
+
+
+    def split(self, side):
+        if type(self.a) == type(Or(Hole(), Hole())):
+            if side == 0:
+                s1 = copy.deepcopy(self.a.a)
+
+                self.r = copy.deepcopy(s1)
+                self.string = None
+                return True
+            else:
+                s2 = copy.deepcopy(self.a.b)
+
+                self.r = copy.deepcopy(s2)
+                self.string = None
+                return True
+        elif type(self.b) == type(Or(Hole(), Hole())):
+            if side == 0:
+                s1 = copy.deepcopy(self.b.b)
+
+                self.r = copy.deepcopy(s1)
+                self.string = None
+                return True
+            else:
+                s2 = copy.deepcopy(self.b.b)
+                self.r = copy.deepcopy(s2)
+                self.string = None
+                return True
+
+        if self.a.split(side):
+            return True
+        else:
+            return self.b.split(side)
+
+
 
 
 class Or(RE):
@@ -422,8 +514,30 @@ class Or(RE):
             self.b.spreadNp()
 
     def unroll(self):
-        return
-    def split(self):
-        return
+        if type(self.a) == type(KleenStar(Hole())) and not self.a.hasHole():
+            s1 = copy.deepcopy(self.a.r)
+            s2 = copy.deepcopy(self.a.r)
+            s3 = copy.deepcopy(self.a)
+
+            self.a = copy.deepcopy(Concatenate(Concatenate(s1, s2), s3))
+            self.string = None
+
+        if type(self.b) == type(KleenStar(Hole())) and not self.b.hasHole():
+            t1 = copy.deepcopy(self.b.r)
+            t2 = copy.deepcopy(self.b.r)
+            t3 = copy.deepcopy(self.b)
+
+
+            self.b = copy.deepcopy(Concatenate(Concatenate(t1, t2), t3))
+            self.string = None
+
+        if not self.a.hasHole():
+            self.a.unroll()
+        if not self.b.hasHole():
+            self.b.unroll()
+
+
+    def split(self, side):
+        return True
 
 
