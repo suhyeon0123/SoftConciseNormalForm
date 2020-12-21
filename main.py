@@ -14,9 +14,6 @@ parser.add_argument("-u", "--unambiguous", help="Set ambiguity",
 args = parser.parse_args()
 
 
-
-
-
 sys.setrecursionlimit(5000000)
 
 import faulthandler
@@ -107,7 +104,6 @@ while not w.empty() and not finished:
                 w.put((cost + int(config['HOLE_COST']) + int(config['CONCAT_COST']) , k))
             else: # Kleene Star
                 w.put((cost + int(config['CLOSURE_COST']) , k))
-
 
 
 
