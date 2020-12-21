@@ -61,15 +61,15 @@ def is_ndead(s, examples):
 def is_redundant(s, examples):
 
     #unroll
-    if type(s.r) == type(KleenStar()) and not s.hasHole():
-        s1 = copy.deepcopy(s.r.r)
-        s2 = copy.deepcopy(s.r.r)
-        s3 = copy.deepcopy(s.r)
-        unrolled_state = copy.deepcopy(Concatenate(Concatenate(s1,s2),s3))
+    if type(s.r) == type(KleenStar()):
+        unrolled_state = copy.deepcopy(s)
+        unrolled_state.unroll_entire()
     else:
-        s_copy = copy.deepcopy(s)
-        s_copy.unroll()
-        unrolled_state = copy.deepcopy(s_copy)
+        unrolled_state = copy.deepcopy(s)
+        unrolled_state.unroll()
+
+    #unrolled_state = copy.deepcopy(s)
+
 
     #split
     prev = [unrolled_state]
@@ -78,30 +78,30 @@ def is_redundant(s, examples):
     while prev:
 
         t = prev.pop()
+
         if '|' in repr(t):
 
             if type(t.r) == type(Or()):
-                s_left = RE(copy.deepcopy(t.r.a))
-                s_right = RE(copy.deepcopy(t.r.b))
+                s_left = RE(t.r.a)
+                s_right = RE(t.r.b)
             else:
                 s_left = copy.deepcopy(t)
                 s_left.split(0)
-                s_left.__repr__()
-                s_right = copy.deepcopy(t)
+                s_right = t
                 s_right.split(1)
-                s_right.__repr__()
 
-            prev.append(copy.deepcopy(s_left))
-            prev.append(copy.deepcopy(s_right))
+            #deepcopy problem
+            prev.append(s_left)
+            prev.append(s_right)
 
         else:
             t.spreadAll()
-            next.append(copy.deepcopy(t))
+            next.append(t)
+
 
 
     #check part
     for state in next:
-
         count = 0
 
         for string in examples.getPos():
