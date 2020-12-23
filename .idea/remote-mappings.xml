@@ -6,7 +6,7 @@
         <remote-mappings server-id="python@sftp://ksk@knutoc.asuscomm.com:9000/home/ksk/Experiments/venv36/bin/python">
           <settings>
             <list>
-              <mapping local-root="$PROJECT_DIR$" remote-root="/home/ksk/Experiments/RegexGeneration/SynthesizingRegularExpression" />
+              <mapping local-root="$PROJECT_DIR$" remote-root="/tmp/pycharm_project_570" />
             </list>
           </settings>
         </remote-mappings>

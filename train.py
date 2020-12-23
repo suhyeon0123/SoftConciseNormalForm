@@ -61,6 +61,8 @@ EPS_END = 0.05
 EPS_DECAY = 200
 TARGET_UPDATE = 10
 
+LENGTH_LIMIT = 20
+
 # gym 행동 공간에서 행동의 숫자를 얻습니다.
 n_actions = 6
 embed_n = 500
@@ -93,8 +95,6 @@ def select_action(state):
             # t.max (1)은 각 행의 가장 큰 열 값을 반환합니다.
             # 최대 결과의 두번째 열은 최대 요소의 주소값이므로,
             # 기대 보상이 더 큰 행동을 선택할 수 있습니다.
-
-
             a = policy_net(state)
             return torch.argmax(a).view(-1,1)
     else:
@@ -173,14 +173,14 @@ def make_next_state(state, action, examples):
     elif action == 5:
         spread_success = copied_state.spread(Question())
 
-    if len(repr(copied_state)) > 30 or not spread_success:
+    if len(repr(copied_state)) > LENGTH_LIMIT or not spread_success:
         done = True
-        reward = torch.FloatTensor([0])
+        reward = -10
         return copied_state, reward, done, success
 
     if repr(copied_state) in scanned:
         done = True
-        reward = torch.FloatTensor([0])
+        reward = -10
         return copied_state, reward, done, success
     else:
         scanned.add(repr(copied_state))
@@ -189,20 +189,20 @@ def make_next_state(state, action, examples):
         #print("pd",state)
         #print(examples.getPos())
         done = True
-        reward = torch.FloatTensor([-0.1])
+        reward = -10
         return copied_state, reward, done, success
 
     if is_ndead(copied_state, examples):
         #print("nd",state)
         done = True
-        reward = torch.FloatTensor([-0.1])
+        reward = -10
         return copied_state, reward, done, success
 
-    if is_redundant(copied_state, examples):
-        #print("rd ",state )
-        done = True
-        reward = torch.FloatTensor([-0.1])
-        return copied_state, reward, done, success
+    #if is_redundant(copied_state, examples):
+    #    #print("rd ",state )
+    #    done = True
+    #    reward = 0
+    #    return copied_state, reward, done, success
 
     if not copied_state.hasHole():
         done = True
@@ -211,17 +211,18 @@ def make_next_state(state, action, examples):
             end = time.time()
             print("Spent computation time:", end - start)
             print("Found solution: ", copied_state)
-            reward = torch.FloatTensor([1])
+            reward = 1000
         else:
-            reward = torch.FloatTensor([-0.1])
+            reward = -10
     else:
         done = False
-        reward = torch.FloatTensor([-0.01])
+        reward = 0
 
     return copied_state, reward, done, success
 
 
 def make_embeded(state,examples):
+
     pos_examples = examples.getPos()
     neg_examples = examples.getNeg()
 
@@ -274,17 +275,19 @@ i = 0
 start = time.time()
 
 loss = 0
+reward_sum = 0
 
 for i_episode in range(num_episodes):
 
     while not w.empty() and not finished:
-        if success or i == 3000:
+        if success or i > 3000:
+            success = False
             start = time.time()
-            with w.mutex:
-                w.queue.clear()
+            w.queue.clear()
             scanned.clear()
             i = 0
             w.put((int(config['HOLE_COST']), RE()))
+            print("Restart")
 
         tmp = w.get()
         state = tmp[1]
@@ -299,14 +302,22 @@ for i_episode in range(num_episodes):
             chosen_action = select_action(make_embeded(state,examples).to(device))
             next_state, reward, done, success = make_next_state(state,chosen_action,examples)
 
-            memory.push(make_embeded(state, examples).to(device), chosen_action.to(device), make_embeded(next_state, examples).to(device), reward.to(device))
+            reward_sum += reward
+
+            memory.push(make_embeded(state, examples).to(device), chosen_action.to(device), make_embeded(next_state, examples).to(device), torch.FloatTensor([reward]).to(device))
 
             if done and w.qsize() != 0:
-                #print("count =",t)
+                # print("count =",t)
                 break
 
             if i % 100 == 0 and i != 0:
-                print("Iteration:", i, "\tCost:", cost, "\tScanned REs:", len(scanned), "\tQueue Size:", w.qsize(), "Loss:", loss.item())
+                for j in range(10):
+                    loss = optimize_model()
+
+                target_net.load_state_dict(policy_net.state_dict())
+
+                print("Iteration:", i, "\tCost:", cost, "\tScanned REs:", len(scanned), "\tQueue Size:", w.qsize(), "\tLoss:", format(loss.item(), '.3f'), "\tAvg Reward:", reward_sum / 100)
+                reward_sum = 0
 
             i = i + 1
 
@@ -318,6 +329,10 @@ for i_episode in range(num_episodes):
                         continue
 
                     copied_state.spread(Character('0'))
+
+                    if len(repr(copied_state)) > LENGTH_LIMIT:
+                        continue
+
                     w.put((cost - int(config['HOLE_COST']) + int(config['SYMBOL_COST']), copied_state))
                 elif action == 1:
                     if action == chosen_action:
@@ -325,6 +340,10 @@ for i_episode in range(num_episodes):
                         continue
 
                     copied_state.spread(Character('1'))
+
+                    if len(repr(copied_state)) > LENGTH_LIMIT:
+                        continue
+
                     w.put((cost - int(config['HOLE_COST']) + int(config['SYMBOL_COST']), copied_state))
                 elif action == 2:
                     if action == chosen_action:
@@ -332,6 +351,10 @@ for i_episode in range(num_episodes):
                         continue
 
                     copied_state.spread(Or())
+
+                    if len(repr(copied_state)) > LENGTH_LIMIT:
+                        continue
+
                     w.put((cost + int(config['HOLE_COST']) + int(config['UNION_COST']), copied_state))
                 elif action == 3:
                     if action == chosen_action:
@@ -339,6 +362,10 @@ for i_episode in range(num_episodes):
                         continue
 
                     copied_state.spread(Concatenate())
+
+                    if len(repr(copied_state)) > LENGTH_LIMIT:
+                        continue
+
                     w.put((cost + int(config['HOLE_COST']) + int(config['CONCAT_COST']), copied_state))
                 elif action == 4:
                     if action == chosen_action:
@@ -346,6 +373,10 @@ for i_episode in range(num_episodes):
                         continue
 
                     copied_state.spread(KleenStar())
+
+                    if len(repr(copied_state)) > LENGTH_LIMIT:
+                        continue
+
                     w.put((cost + int(config['CLOSURE_COST']), copied_state))
                 elif action == 5:
                     if action == chosen_action:
@@ -353,6 +384,10 @@ for i_episode in range(num_episodes):
                         continue
 
                     copied_state.spread(Question())
+
+                    if len(repr(copied_state)) > LENGTH_LIMIT:
+                        continue
+
                     w.put((cost + int(config['CLOSURE_COST']), copied_state))
 
 
@@ -365,12 +400,6 @@ for i_episode in range(num_episodes):
             state = next_state
 
 
-
-        #목표 네트워크 업데이트, 모든 웨이트와 바이어스 복사
-        if i_episode % TARGET_UPDATE == 0:
-            # 최적화 한단계 수행(목표 네트워크에서)
-            loss = optimize_model()
-            target_net.load_state_dict(policy_net.state_dict())
 
 
 

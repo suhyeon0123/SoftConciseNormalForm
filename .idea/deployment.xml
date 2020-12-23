@@ -1,25 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
-  <component name="PublishConfigData" autoUpload="Always" serverName="ksk@knutoc.asuscomm.com:9000 password" remoteFilesAllowedToDisappearOnAutoupload="false">
+  <component name="PublishConfigData" autoUpload="Always" serverName="ksk@knutoc.asuscomm.com:9000" remoteFilesAllowedToDisappearOnAutoupload="false">
     <serverData>
       <paths name="ksk@knutoc.asuscomm.com:9000">
         <serverdata>
           <mappings>
-            <mapping local="$PROJECT_DIR$" web="/" />
-          </mappings>
-        </serverdata>
-      </paths>
-      <paths name="ksk@knutoc.asuscomm.com:9000 (1)">
-        <serverdata>
-          <mappings>
-            <mapping local="$PROJECT_DIR$" web="/" />
-          </mappings>
-        </serverdata>
-      </paths>
-      <paths name="ksk@knutoc.asuscomm.com:9000 password">
-        <serverdata>
-          <mappings>
-            <mapping deploy="/tmp/pycharm_project_570" local="$PROJECT_DIR$" />
+            <mapping deploy="/tmp/pycharm_project_570" local="$PROJECT_DIR$" web="/" />
           </mappings>
         </serverdata>
       </paths>
