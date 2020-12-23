@@ -99,17 +99,13 @@ def is_redundant(s, examples):
             next.append(t)
 
 
-
-    #check part
+    #check point
     for state in next:
         count = 0
-
         for string in examples.getPos():
             if membership(repr(state), string):
-                break
-            count = count+1
-
-        if count == len(examples.getPos()):
+                count = count +1
+        if count == 0:
             return True
-
     return False
+
