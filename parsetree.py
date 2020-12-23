@@ -52,10 +52,17 @@ class RE:
             return self.r.spread(case)
     def spreadAll(self):
         self.string = None
-        self.r.spreadAll()
+        if type(self.r) == type((Hole())):
+            self.r = KleenStar(Or(Character('0'), Character('1')))
+        else:
+            self.r.spreadAll()
+
     def spreadNp(self):
         self.string = None
-        self.r.spreadNp()
+        if type(self.r) == type((Hole())):
+            self.r = Character('@emptyset')
+        else:
+            self.r.spreadNp()
     def unroll(self):
         self.string = None
         self.r.unroll()
