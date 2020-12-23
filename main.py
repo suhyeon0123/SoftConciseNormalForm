@@ -74,7 +74,7 @@ while not w.empty() and not finished:
 
 
             if is_pdead(k, examples):
-                print(repr(k), "is pdead")
+                #print(repr(k), "is pdead")
                 continue
 
             if is_ndead(k, examples):

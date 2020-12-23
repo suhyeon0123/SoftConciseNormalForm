@@ -122,10 +122,7 @@ def optimize_model():
     state_batch = torch.cat(batch.state)
     action_batch = torch.cat(batch.action)
     reward_batch = torch.cat(batch.reward)
-    '''print(state_batch.shape)
-    print(action_batch.shape)
-    print(reward_batch.shape)
-    print(non_final_next_states.shape)'''
+
 
     # Q(s_t, a) 계산 - 모델이 Q(s_t)를 계산하고, 취한 행동의 열을 선택합니다.
     # 이들은 policy_net에 따라 각 배치 상태에 대해 선택된 행동입니다.
