@@ -340,9 +340,9 @@ for i_episode in range(num_episodes):
                         nextCost = cost - int(config['HOLE_COST']) + int(config['SYMBOL_COST'])
                         continue
 
-                    copied_state.spread(Character('0'))
+                    spread_result = copied_state.spread(Character('0'))
 
-                    if len(repr(copied_state)) > LENGTH_LIMIT:
+                    if len(repr(copied_state)) > LENGTH_LIMIT or not spread_result:
                         continue
 
                     w.put((cost - int(config['HOLE_COST']) + int(config['SYMBOL_COST']), copied_state))
@@ -351,9 +351,9 @@ for i_episode in range(num_episodes):
                         nextCost = cost - int(config['HOLE_COST']) + int(config['SYMBOL_COST'])
                         continue
 
-                    copied_state.spread(Character('1'))
+                    spread_result = copied_state.spread(Character('1'))
 
-                    if len(repr(copied_state)) > LENGTH_LIMIT:
+                    if len(repr(copied_state)) > LENGTH_LIMIT or not spread_result:
                         continue
 
                     w.put((cost - int(config['HOLE_COST']) + int(config['SYMBOL_COST']), copied_state))
@@ -362,9 +362,9 @@ for i_episode in range(num_episodes):
                         nextCost = cost + int(config['HOLE_COST']) + int(config['UNION_COST'])
                         continue
 
-                    copied_state.spread(Or())
+                    spread_result = copied_state.spread(Or())
 
-                    if len(repr(copied_state)) > LENGTH_LIMIT:
+                    if len(repr(copied_state)) > LENGTH_LIMIT or not spread_result:
                         continue
 
                     w.put((cost + int(config['HOLE_COST']) + int(config['UNION_COST']), copied_state))
@@ -373,9 +373,9 @@ for i_episode in range(num_episodes):
                         nextCost = cost + int(config['HOLE_COST']) + int(config['CONCAT_COST'])
                         continue
 
-                    copied_state.spread(Concatenate())
+                    spread_result = copied_state.spread(Concatenate())
 
-                    if len(repr(copied_state)) > LENGTH_LIMIT:
+                    if len(repr(copied_state)) > LENGTH_LIMIT or not spread_result:
                         continue
 
                     w.put((cost + int(config['HOLE_COST']) + int(config['CONCAT_COST']), copied_state))
@@ -384,9 +384,9 @@ for i_episode in range(num_episodes):
                         nextCost = cost + int(config['CLOSURE_COST'])
                         continue
 
-                    copied_state.spread(KleenStar())
+                    spread_result = copied_state.spread(KleenStar())
 
-                    if len(repr(copied_state)) > LENGTH_LIMIT:
+                    if len(repr(copied_state)) > LENGTH_LIMIT or not spread_result:
                         continue
 
                     w.put((cost + int(config['CLOSURE_COST']), copied_state))
@@ -395,9 +395,9 @@ for i_episode in range(num_episodes):
                         nextCost = cost + int(config['CLOSURE_COST'])
                         continue
 
-                    copied_state.spread(Question())
+                    spread_result = copied_state.spread(Question())
 
-                    if len(repr(copied_state)) > LENGTH_LIMIT:
+                    if len(repr(copied_state)) > LENGTH_LIMIT or not spread_result:
                         continue
 
                     w.put((cost + int(config['CLOSURE_COST']), copied_state))
