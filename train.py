@@ -1,27 +1,27 @@
 #import gym
+from queue import PriorityQueue
 import math
 import random
 import numpy as np
-#import matplotlib
-#import matplotlib.pyplot as plt
 from collections import namedtuple
-from itertools import count
-from PIL import Image
 
+import time
 import torch
-import torch.nn as nn
 import torch.optim as optim
-import torch.nn.functional as F
-import torchvision.transforms as T
 from util import *
 from DQN import*
 from examples import Examples
 from parsetree import *
+import configparser
+
+config = configparser.ConfigParser()
+config.read('config.ini')
+config = config['default']
 
 
 # GPU를 사용할 경우
-#device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-device = 'cpu'
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+#device = 'cpu'
 
 #---------------------------
 
@@ -76,6 +76,7 @@ memory = ReplayMemory(10000)
 
 steps_done = 0
 
+scanned = set()
 
 
 
@@ -151,49 +152,68 @@ def optimize_model():
         param.grad.data.clamp_(-1, 1)
     optimizer.step()
 
-
+    return loss
 
 
 
 
 def make_next_state(state, action, examples):
 
+    copied_state = copy.deepcopy(state)
+
+    success = False
+
     if action==0:
-        state.spread(Character('0'))
+        spread_success = copied_state.spread(Character('0'))
     elif action == 1:
-        state.spread(Character('1'))
+        spread_success = copied_state.spread(Character('1'))
     elif action == 2:
-        state.spread(Or())
+        spread_success = copied_state.spread(Or())
     elif action == 3:
-        state.spread(Concatenate())
+        spread_success = copied_state.spread(Concatenate())
     elif action == 4:
-        state.spread(KleenStar())
-    '''elif action == 5:
-        state.spread(Question())'''
+        spread_success = copied_state.spread(KleenStar())
+    elif action == 5:
+        spread_success = copied_state.spread(Question())
 
+    if len(repr(copied_state)) > 30 or not spread_success:
+        done = True
+        reward = torch.FloatTensor([0])
+        return copied_state, reward, done, success
 
-    if is_pdead(state, examples):
-        print("pd",state)
-        print(examples.getPos())
+    if repr(copied_state) in scanned:
+        done = True
+        reward = torch.FloatTensor([0])
+        return copied_state, reward, done, success
+    else:
+        scanned.add(repr(copied_state))
+
+    if is_pdead(copied_state, examples):
+        #print("pd",state)
+        #print(examples.getPos())
         done = True
         reward = torch.FloatTensor([-0.1])
-        return state, reward, done
+        return copied_state, reward, done, success
 
-    if is_ndead(state, examples):
-        print("nd",state)
+    if is_ndead(copied_state, examples):
+        #print("nd",state)
         done = True
         reward = torch.FloatTensor([-0.1])
-        return state, reward, done
+        return copied_state, reward, done, success
 
-    if is_redundant(state, examples):
-        print("rd ",state )
+    if is_redundant(copied_state, examples):
+        #print("rd ",state )
         done = True
         reward = torch.FloatTensor([-0.1])
-        return state, reward, done
+        return copied_state, reward, done, success
 
-    if not state.hasHole():
+    if not copied_state.hasHole():
         done = True
-        if is_solution(repr(state), examples, membership):
+        if is_solution(repr(copied_state), examples, membership):
+            success = True
+            end = time.time()
+            print("Spent computation time:", end - start)
+            print("Found solution: ", copied_state)
             reward = torch.FloatTensor([1])
         else:
             reward = torch.FloatTensor([-0.1])
@@ -201,7 +221,7 @@ def make_next_state(state, action, examples):
         done = False
         reward = torch.FloatTensor([-0.01])
 
-    return state, reward, done
+    return copied_state, reward, done, success
 
 
 def make_embeded(state,examples):
@@ -239,30 +259,123 @@ def make_embeded(state,examples):
     return b
 
 
+w = PriorityQueue()
+
+scanned = set()
+
+w.put((int(config['HOLE_COST']), RE()))
+
+finished = False
+success = False
+
+examples = Examples(2)
+
 num_episodes = 1000
+
+i = 0
+
+start = time.time()
+
+loss = 0
+
 for i_episode in range(num_episodes):
 
-    state = RE()
-    examples = Examples(2)
+    while not w.empty() and not finished:
+        if success or i == 3000:
+            start = time.time()
+            with w.mutex:
+                w.queue.clear()
+            scanned.clear()
+            i = 0
+            w.put((int(config['HOLE_COST']), RE()))
 
-    for t in range(1000):
-        action = select_action(make_embeded(state,examples))
-        next_state, reward, done = make_next_state(state,action,examples)
+        tmp = w.get()
+        state = tmp[1]
+        cost = tmp[0]
 
-        # 메모리에 변이 저장
-        memory.push(make_embeded(state,examples), action, make_embeded(next_state,examples), reward)
-        # 다음 상태로 이동
-        state = next_state
+        prevCost = cost
 
-        print(repr(state))
-        # 최적화 한단계 수행(목표 네트워크에서)
-        optimize_model()
-        if done:
-            print("count =",t)
-            break
-    #목표 네트워크 업데이트, 모든 웨이트와 바이어스 복사
-    if i_episode % TARGET_UPDATE == 0:
-        target_net.load_state_dict(policy_net.state_dict())
+        if not state.hasHole():
+            continue
+
+        for t in range(5):
+            chosen_action = select_action(make_embeded(state,examples).to(device))
+            next_state, reward, done, success = make_next_state(state,chosen_action,examples)
+
+            memory.push(make_embeded(state, examples).to(device), chosen_action.to(device), make_embeded(next_state, examples).to(device), reward.to(device))
+
+            if done and w.qsize() != 0:
+                #print("count =",t)
+                break
+
+            if i % 100 == 0 and i != 0:
+                print("Iteration:", i, "\tCost:", cost, "\tScanned REs:", len(scanned), "\tQueue Size:", w.qsize(), "Loss:", loss.item())
+
+            i = i + 1
+
+            for action in range(6):
+                copied_state = copy.deepcopy(state)
+                if action == 0:
+                    if action == chosen_action:
+                        nextCost = cost - int(config['HOLE_COST']) + int(config['SYMBOL_COST'])
+                        continue
+
+                    copied_state.spread(Character('0'))
+                    w.put((cost - int(config['HOLE_COST']) + int(config['SYMBOL_COST']), copied_state))
+                elif action == 1:
+                    if action == chosen_action:
+                        nextCost = cost - int(config['HOLE_COST']) + int(config['SYMBOL_COST'])
+                        continue
+
+                    copied_state.spread(Character('1'))
+                    w.put((cost - int(config['HOLE_COST']) + int(config['SYMBOL_COST']), copied_state))
+                elif action == 2:
+                    if action == chosen_action:
+                        nextCost = cost + int(config['HOLE_COST']) + int(config['UNION_COST'])
+                        continue
+
+                    copied_state.spread(Or())
+                    w.put((cost + int(config['HOLE_COST']) + int(config['UNION_COST']), copied_state))
+                elif action == 3:
+                    if action == chosen_action:
+                        nextCost = cost + int(config['HOLE_COST']) + int(config['CONCAT_COST'])
+                        continue
+
+                    copied_state.spread(Concatenate())
+                    w.put((cost + int(config['HOLE_COST']) + int(config['CONCAT_COST']), copied_state))
+                elif action == 4:
+                    if action == chosen_action:
+                        nextCost = cost + int(config['CLOSURE_COST'])
+                        continue
+
+                    copied_state.spread(KleenStar())
+                    w.put((cost + int(config['CLOSURE_COST']), copied_state))
+                elif action == 5:
+                    if action == chosen_action:
+                        nextCost = cost + int(config['CLOSURE_COST'])
+                        continue
+
+                    copied_state.spread(Question())
+                    w.put((cost + int(config['CLOSURE_COST']), copied_state))
+
+
+            cost = nextCost
+
+
+            # 메모리에 변이 저장
+
+            # 다음 상태로 이동
+            state = next_state
+
+
+
+        #목표 네트워크 업데이트, 모든 웨이트와 바이어스 복사
+        if i_episode % TARGET_UPDATE == 0:
+            # 최적화 한단계 수행(목표 네트워크에서)
+            loss = optimize_model()
+            target_net.load_state_dict(policy_net.state_dict())
+
+
 
 print('Complete')
 
