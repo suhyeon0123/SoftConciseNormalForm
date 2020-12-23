@@ -27,7 +27,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 Transition = namedtuple('Transition',
-                        ('state', 'action', 'next_state', 'reward'))
+                        ('state', 'pos_example', 'neg_example', 'action', 'next_state', 'reward'))
 
 
 
@@ -62,13 +62,14 @@ EPS_DECAY = 200
 TARGET_UPDATE = 10
 
 LENGTH_LIMIT = 20
+EXAMPLE_LENGHT_LIMIT = 50
 
 # gym 행동 공간에서 행동의 숫자를 얻습니다.
 n_actions = 6
 embed_n = 500
 
-policy_net = DQN(embed_n, n_actions).to(device)
-target_net = DQN(embed_n, n_actions).to(device)
+policy_net = DQN().to(device)
+target_net = DQN().to(device)
 target_net.load_state_dict(policy_net.state_dict())
 target_net.eval()
 
@@ -84,7 +85,7 @@ scanned = set()
 
 #-----------------------------------
 
-def select_action(state):
+def select_action(regex_tensor, pos_tensor, neg_tensor):
     global steps_done
     sample = random.random()
     eps_threshold = EPS_END + (EPS_START - EPS_END) * \
@@ -95,7 +96,7 @@ def select_action(state):
             # t.max (1)은 각 행의 가장 큰 열 값을 반환합니다.
             # 최대 결과의 두번째 열은 최대 요소의 주소값이므로,
             # 기대 보상이 더 큰 행동을 선택할 수 있습니다.
-            a = policy_net(state)
+            a = policy_net(regex_tensor, pos_tensor, neg_tensor)
             return torch.argmax(a).view(-1,1)
     else:
         return torch.tensor([[random.randrange(n_actions)]], device=device, dtype=torch.long)
@@ -120,13 +121,15 @@ def optimize_model():
                                                 if s is not None])
 
     state_batch = torch.cat(batch.state)
+    pos_example_batch = torch.cat(batch.pos_example)
+    neg_example_batch = torch.cat(batch.neg_example)
     action_batch = torch.cat(batch.action)
     reward_batch = torch.cat(batch.reward)
 
 
     # Q(s_t, a) 계산 - 모델이 Q(s_t)를 계산하고, 취한 행동의 열을 선택합니다.
     # 이들은 policy_net에 따라 각 배치 상태에 대해 선택된 행동입니다.
-    state_action_values = policy_net(state_batch).view(-1,6).gather(1, action_batch)
+    state_action_values = policy_net(state_batch, pos_example_batch, neg_example_batch).view(-1,6).gather(1, action_batch)
 
 
 
@@ -135,7 +138,7 @@ def optimize_model():
     # max(1)[0]으로 최고의 보상을 선택하십시오.
     # 이것은 마스크를 기반으로 병합되어 기대 상태 값을 갖거나 상태가 최종인 경우 0을 갖습니다.
     next_state_values = torch.zeros(BATCH_SIZE, device=device)
-    next_state_values[non_final_mask] = target_net(non_final_next_states).view(-1,6).max(1)[0].detach()
+    next_state_values[non_final_mask] = target_net(non_final_next_states, pos_example_batch,neg_example_batch ).view(-1,6).max(1)[0].detach()
     # 기대 Q 값 계산
     expected_state_action_values = (next_state_values * GAMMA) + reward_batch
 
@@ -227,14 +230,19 @@ def make_embeded(state,examples):
     neg_examples = examples.getNeg()
 
     word_index = {'0': 1, '1': 2, '(': 3, ')': 4, '?': 5, '*': 6, '|': 7,
-                  'X': 8}
+                  'X': 8, '#': 9}
     encoded = []
     for c in repr(state):
         try:
             encoded.append(word_index[c])
         except KeyError:
             encoded.append(100)
-    encoded.append(9)
+
+    encoded += [0] * (LENGTH_LIMIT + 5 - len(encoded))
+
+    regex_tensor = torch.LongTensor(encoded).view(1, LENGTH_LIMIT+5)
+
+    encoded = []
     for example in pos_examples:
         for c in example:
             try:
@@ -242,7 +250,11 @@ def make_embeded(state,examples):
             except KeyError:
                 encoded.append(100)
         encoded.append(10)
-    encoded.append(9)
+
+    encoded += [0] * (EXAMPLE_LENGHT_LIMIT - len(encoded))
+    pos_example_tensor = torch.LongTensor(encoded).view(1, EXAMPLE_LENGHT_LIMIT)
+
+    encoded = []
     for example in neg_examples:
         for c in example:
             try:
@@ -250,11 +262,11 @@ def make_embeded(state,examples):
             except KeyError:
                 encoded.append(100)
         encoded.append(10)
-    encoded += [0] * (500 - len(encoded))
-    a = torch.FloatTensor(encoded)
 
-    b = a.view([1,1,500])
-    return b
+    encoded += [0] * (EXAMPLE_LENGHT_LIMIT - len(encoded))
+    neg_example_tensor = torch.LongTensor(encoded).view(1, EXAMPLE_LENGHT_LIMIT)
+
+    return regex_tensor, pos_example_tensor, neg_example_tensor
 
 
 w = PriorityQueue()
@@ -299,12 +311,12 @@ for i_episode in range(num_episodes):
             continue
 
         for t in range(5):
-            chosen_action = select_action(make_embeded(state,examples).to(device))
+            chosen_action = select_action(*make_embeded(state,examples))
             next_state, reward, done, success = make_next_state(state,chosen_action,examples)
 
             reward_sum += reward
 
-            memory.push(make_embeded(state, examples).to(device), chosen_action.to(device), make_embeded(next_state, examples).to(device), torch.FloatTensor([reward]).to(device))
+            memory.push(*make_embeded(state, examples), chosen_action, make_embeded(next_state, examples)[0], torch.FloatTensor([reward]).to(device))
 
             if done and w.qsize() != 0:
                 # print("count =",t)
@@ -390,12 +402,10 @@ for i_episode in range(num_episodes):
 
                     w.put((cost + int(config['CLOSURE_COST']), copied_state))
 
+            if cost < 0 or cost > 5000:
+                print(cost, nextCost, chosen_action, state, next_state)
 
             cost = nextCost
-
-
-            # 메모리에 변이 저장
-
             # 다음 상태로 이동
             state = next_state
 
