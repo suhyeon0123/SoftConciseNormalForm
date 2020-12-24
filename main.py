@@ -31,7 +31,7 @@ w = PriorityQueue()
 scanned = set()
 
 w.put((int(config['HOLE_COST']), RE()))
-examples = Examples(args.examples)
+examples = Examples(2)
 answer = examples.getAnswer()
 
 print(examples.getPos(), examples.getNeg())
