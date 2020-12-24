@@ -1,12 +1,10 @@
-#import gym
 import math
 import random
+from queue import PriorityQueue
+
 import numpy as np
-#import matplotlib
-#import matplotlib.pyplot as plt
 from collections import namedtuple
 from itertools import count
-from PIL import Image
 
 import torch
 import torch.nn as nn
@@ -18,6 +16,11 @@ from DQN import*
 from examples import Examples
 from parsetree import *
 
+import configparser
+config = configparser.ConfigParser()
+config.read('config.ini')
+config = config['default']
+
 
 # GPU를 사용할 경우
 #device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -28,7 +31,6 @@ device = 'cpu'
 
 Transition = namedtuple('Transition',
                         ('state', 'action', 'next_state', 'reward'))
-
 
 
 class ReplayMemory(object):
@@ -75,7 +77,6 @@ memory = ReplayMemory(10000)
 
 
 steps_done = 0
-
 
 
 
@@ -153,40 +154,119 @@ def optimize_model():
 
 
 
-def make_next_state(state, action, examples):
+def make_next_state(state, action, examples, cost):
 
-    if action==0:
-        state.spread(Character('0'))
-    elif action == 1:
-        state.spread(Character('1'))
-    elif action == 2:
-        state.spread(Or())
-    elif action == 3:
-        state.spread(Concatenate())
-    elif action == 4:
-        state.spread(KleenStar())
+
+
+    state0 = copy.deepcopy(state)
+    state0.spread(Character('0'))
+    state1 = copy.deepcopy(state)
+    state1.spread(Character('1'))
+    state2 = copy.deepcopy(state)
+    state2.spread(Or())
+    state3 = copy.deepcopy(state)
+    state3.spread(Concatenate())
+    state4 = copy.deepcopy(state)
+    state4.spread(KleenStar())
+
+
+    if action==0 and not repr(state0) in scanned:
+
+        w.put((cost + - int(config['HOLE_COST']) + int(config['SYMBOL_COST']), state1))
+        w.put((cost + int(config['HOLE_COST']) + int(config['UNION_COST']), state2))
+        w.put(((cost + int(config['HOLE_COST']) + int(config['CONCAT_COST']), state3)))
+        w.put(((cost + int(config['CLOSURE_COST']), state4)))
+
+        cost = cost + - int(config['HOLE_COST']) + int(config['SYMBOL_COST'])
+        state = state0
+
+    elif action == 1 and not repr(state1) in scanned:
+        w.put(((cost + - int(config['HOLE_COST']) + int(config['SYMBOL_COST']), state0)))
+        w.put((cost + int(config['HOLE_COST']) + int(config['UNION_COST']), state2))
+        w.put(((cost + int(config['HOLE_COST']) + int(config['CONCAT_COST']), state3)))
+        w.put(((cost + int(config['CLOSURE_COST']), state4)))
+
+        cost = cost + - int(config['HOLE_COST']) + int(config['SYMBOL_COST'])
+        state = state1
+
+    elif action == 2 and not repr(state2) in scanned:
+        w.put(((cost + - int(config['HOLE_COST']) + int(config['SYMBOL_COST']), state0)))
+        w.put(((cost + - int(config['HOLE_COST']) + int(config['SYMBOL_COST']), state1)))
+        w.put(((cost + int(config['HOLE_COST']) + int(config['CONCAT_COST']), state3)))
+        w.put(((cost + int(config['CLOSURE_COST']), state4)))
+
+        cost = cost + int(config['HOLE_COST']) + int(config['UNION_COST'])
+        state = state2
+
+    elif action == 3 and not repr(state3) in scanned:
+        w.put(((cost + - int(config['HOLE_COST']) + int(config['SYMBOL_COST']), state0)))
+        w.put(((cost + - int(config['HOLE_COST']) + int(config['SYMBOL_COST']), state1)))
+        w.put((cost + int(config['HOLE_COST']) + int(config['UNION_COST']), state2))
+        w.put(((cost + int(config['CLOSURE_COST']), state4)))
+
+        cost = cost + int(config['HOLE_COST']) + int(config['CONCAT_COST'])
+        state = state3
+    elif action == 4 and not repr(state4) in scanned:
+        w.put(((cost + - int(config['HOLE_COST']) + int(config['SYMBOL_COST']), state0)))
+        w.put(((cost + - int(config['HOLE_COST']) + int(config['SYMBOL_COST']), state1)))
+        w.put((cost + int(config['HOLE_COST']) + int(config['UNION_COST']), state2))
+        w.put(((cost + int(config['HOLE_COST']) + int(config['CONCAT_COST']), state3)))
+
+        cost = cost + int(config['CLOSURE_COST'])
+        state = state4
     '''elif action == 5:
-        state.spread(Question())'''
+            state.spread(Question())'''
+
+
+
+
+    '''if repr(state) in scanned:
+        action = (action + 1)%5
+        catch += 1
+        if catch >5:
+            print(state)
+            print("exception")
+
+            done = False
+            item = w.get()
+            state = item[1]
+            # state -> bool?
+            cost = item[0]
+            reward = torch.FloatTensor([-0.1])
+            return state, reward, done, cost
+        #action change to other num or other state.
+        continue
+    else:
+        scanned.add(repr(state))
+        break'''
 
 
     if is_pdead(state, examples):
         print("pd",state)
-        print(examples.getPos())
-        done = True
+        done = False
+        item = w.get()
+        state = item[1]
+        cost = item[0]
         reward = torch.FloatTensor([-0.1])
-        return state, reward, done
+        return state, reward, done, cost
 
     if is_ndead(state, examples):
         print("nd",state)
-        done = True
+        done = False
+        item = w.get()
+        state = item[1]
+        cost = item[0]
         reward = torch.FloatTensor([-0.1])
-        return state, reward, done
+        return state, reward, done, cost
 
     if is_redundant(state, examples):
         print("rd ",state )
-        done = True
+        done = False
+        item = w.get()
+        state = item[1]
+        cost = item[0]
         reward = torch.FloatTensor([-0.1])
-        return state, reward, done
+        return state, reward, done, cost
 
     if not state.hasHole():
         done = True
@@ -198,7 +278,7 @@ def make_next_state(state, action, examples):
         done = False
         reward = torch.FloatTensor([-0.01])
 
-    return state, reward, done
+    return state, reward, done, cost
 
 
 def make_embeded(state,examples):
@@ -239,19 +319,24 @@ def make_embeded(state,examples):
 num_episodes = 1000
 for i_episode in range(num_episodes):
 
+    w = PriorityQueue()
+    scanned = set()
+
     state = RE()
+    w.put((int(config['HOLE_COST']), RE()))
+    cost = int(config['HOLE_COST'])
     examples = Examples(2)
 
     for t in range(1000):
         action = select_action(make_embeded(state,examples))
-        next_state, reward, done = make_next_state(state,action,examples)
+        print(state, " // ", action, " // ", cost)
+        next_state, reward, done, cost = make_next_state(state,action,examples,cost)
 
         # 메모리에 변이 저장
         memory.push(make_embeded(state,examples), action, make_embeded(next_state,examples), reward)
         # 다음 상태로 이동
         state = next_state
 
-        print(repr(state))
         # 최적화 한단계 수행(목표 네트워크에서)
         optimize_model()
         if done:
