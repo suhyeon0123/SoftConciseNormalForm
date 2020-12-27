@@ -13,6 +13,12 @@ class Examples(object):
         self.make_examples(self.neg_simple, False)
 
 
+    def setPos(self, pos):
+        self.pos = pos
+
+    def setNeg(self, neg):
+        self.neg = neg
+
     def addPos(self, example):
         self.pos.append(example)
 

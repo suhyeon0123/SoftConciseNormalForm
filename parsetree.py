@@ -66,6 +66,7 @@ class RE:
     def unroll(self):
         self.string = None
         self.r.unroll()
+        self.string = None
     def unroll_entire(self):
         s1 = copy.deepcopy(self.r.r)
         s2 = copy.deepcopy(self.r)

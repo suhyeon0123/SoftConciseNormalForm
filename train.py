@@ -14,6 +14,9 @@ from examples import Examples
 from parsetree import *
 import configparser
 
+from FAdo.cfg import *
+from xeger import Xeger
+
 config = configparser.ConfigParser()
 config.read('config.ini')
 config = config['default']
@@ -62,7 +65,7 @@ EPS_DECAY = 200
 TARGET_UPDATE = 10
 
 LENGTH_LIMIT = 20
-EXAMPLE_LENGHT_LIMIT = 50
+EXAMPLE_LENGHT_LIMIT = 300
 
 # gym 행동 공간에서 행동의 숫자를 얻습니다.
 n_actions = 6
@@ -93,10 +96,7 @@ def select_action(regex_tensor, pos_tensor, neg_tensor):
     steps_done += 1
     if sample > eps_threshold:
         with torch.no_grad():
-            # t.max (1)은 각 행의 가장 큰 열 값을 반환합니다.
-            # 최대 결과의 두번째 열은 최대 요소의 주소값이므로,
-            # 기대 보상이 더 큰 행동을 선택할 수 있습니다.
-            a = policy_net(regex_tensor, pos_tensor, neg_tensor)
+            a = policy_net(regex_tensor, pos_tensor, neg_tensor) #(1,6)
             return torch.argmax(a).view(-1,1)
     else:
         return torch.tensor([[random.randrange(n_actions)]], device=device, dtype=torch.long)
@@ -107,18 +107,8 @@ def select_action(regex_tensor, pos_tensor, neg_tensor):
 def optimize_model():
     if len(memory) < BATCH_SIZE:
         return
-    transitions = memory.sample(BATCH_SIZE)
-    # Transpose the batch (see https://stackoverflow.com/a/19343/3343043 for
-    # detailed explanation). 이것은 batch-array의 Transitions을 Transition의 batch-arrays로
-    # 전환합니다.
-    batch = Transition(*zip(*transitions))
-
-    # 최종이 아닌 상태의 마스크를 계산하고 배치 요소를 연결합니다
-    # (최종 상태는 시뮬레이션이 종료 된 이후의 상태)
-    non_final_mask = torch.tensor(tuple(map(lambda s: s is not None,
-                                          batch.next_state)), device=device, dtype=torch.bool)
-    non_final_next_states = torch.cat([s for s in batch.next_state
-                                                if s is not None])
+    transitions = memory.sample(BATCH_SIZE) #list(Transition)
+    batch = Transition(*zip(*transitions))  #Transition()
 
     state_batch = torch.cat(batch.state)
     pos_example_batch = torch.cat(batch.pos_example)
@@ -126,12 +116,16 @@ def optimize_model():
     action_batch = torch.cat(batch.action)
     reward_batch = torch.cat(batch.reward)
 
-
     # Q(s_t, a) 계산 - 모델이 Q(s_t)를 계산하고, 취한 행동의 열을 선택합니다.
     # 이들은 policy_net에 따라 각 배치 상태에 대해 선택된 행동입니다.
     state_action_values = policy_net(state_batch, pos_example_batch, neg_example_batch).view(-1,6).gather(1, action_batch)
 
-
+    # 최종이 아닌 상태의 마스크를 계산하고 배치 요소를 연결합니다
+    # (최종 상태는 시뮬레이션이 종료 된 이후의 상태)
+    non_final_mask = torch.tensor(tuple(map(lambda s: s is not None,
+                                            batch.next_state)), device=device, dtype=torch.bool)
+    non_final_next_states = torch.cat([s for s in batch.next_state
+                                       if s is not None])
 
     # 모든 다음 상태를 위한 V(s_{t+1}) 계산
     # non_final_next_states의 행동들에 대한 기대값은 "이전" target_net을 기반으로 계산됩니다.
@@ -139,6 +133,7 @@ def optimize_model():
     # 이것은 마스크를 기반으로 병합되어 기대 상태 값을 갖거나 상태가 최종인 경우 0을 갖습니다.
     next_state_values = torch.zeros(BATCH_SIZE, device=device)
     next_state_values[non_final_mask] = target_net(non_final_next_states, pos_example_batch,neg_example_batch ).view(-1,6).max(1)[0].detach()
+
     # 기대 Q 값 계산
     expected_state_action_values = (next_state_values * GAMMA) + reward_batch
 
@@ -201,11 +196,11 @@ def make_next_state(state, action, examples):
         reward = -10
         return copied_state, reward, done, success
 
-    #if is_redundant(copied_state, examples):
-    #    #print("rd ",state )
-    #    done = True
-    #    reward = 0
-    #    return copied_state, reward, done, success
+    '''if is_redundant(copied_state, examples):
+        #print("rd ",state )
+        done = True
+        reward = 0
+        return copied_state, reward, done, success'''
 
     if not copied_state.hasHole():
         done = True
@@ -268,38 +263,66 @@ def make_embeded(state,examples):
 
     return regex_tensor, pos_example_tensor, neg_example_tensor
 
+def gen_str():
+    str_list = []
+
+    for i in range(random.randrange(1,30)):
+        if random.randrange(1,3) == 1:
+             str_list.append('0')
+        else:
+            str_list.append('1')
+
+    return ''.join(str_list)
+
+def rand_example():
+    gen = reStringRGenerator(['0', '1'], random.randrange(3, 15), eps=None)
+    regex = gen.generate().replace('+', '|')
+    print(regex)
+
+    x = Xeger(limit=20)
+    pos_size = 10
+    pos_example = list()
+    for i in range(pos_size):
+        pos_example.append(x.xeger(regex))
+
+    neg_example = list()
+    for i in range(1000):
+        random_str = gen_str()
+        if random_str:
+            neg_example.append(random_str)
+            if len(neg_example) == 10:
+                break
+
+    examples = Examples(1)
+    examples.setPos(pos_example)
+    examples.setNeg(neg_example)
+
+    return examples
+
+
 
 w = PriorityQueue()
 
 scanned = set()
 
-w.put((int(config['HOLE_COST']), RE()))
-
-finished = False
-success = False
-
-examples = Examples(2)
-
-num_episodes = 1000
-
-i = 0
-
-start = time.time()
-
 loss = 0
 reward_sum = 0
 
+num_episodes = 1000
+
 for i_episode in range(num_episodes):
 
-    while not w.empty() and not finished:
-        if success or i > 3000:
-            success = False
-            start = time.time()
-            w.queue.clear()
-            scanned.clear()
-            i = 0
-            w.put((int(config['HOLE_COST']), RE()))
-            print("Restart")
+    success = False
+    start = time.time()
+    w.queue.clear()
+    scanned.clear()
+    i = 0
+    w.put((int(config['HOLE_COST']), RE()))
+    print("start")
+
+    examples = rand_example()
+
+    while not success and i <= 3000:
 
         tmp = w.get()
         state = tmp[1]
@@ -311,12 +334,13 @@ for i_episode in range(num_episodes):
             continue
 
         for t in range(5):
-            chosen_action = select_action(*make_embeded(state,examples))
-            next_state, reward, done, success = make_next_state(state,chosen_action,examples)
+            chosen_action = select_action(*make_embeded(state, examples))
+            next_state, reward, done, success = make_next_state(state, chosen_action, examples)
 
             reward_sum += reward
 
-            memory.push(*make_embeded(state, examples), chosen_action, make_embeded(next_state, examples)[0], torch.FloatTensor([reward]).to(device))
+            memory.push(*make_embeded(state, examples), chosen_action, make_embeded(next_state, examples)[0],
+                        torch.FloatTensor([reward]).to(device))
 
             if done and w.qsize() != 0:
                 # print("count =",t)
@@ -328,11 +352,13 @@ for i_episode in range(num_episodes):
 
                 target_net.load_state_dict(policy_net.state_dict())
 
-                print("Iteration:", i, "\tCost:", cost, "\tScanned REs:", len(scanned), "\tQueue Size:", w.qsize(), "\tLoss:", format(loss.item(), '.3f'), "\tAvg Reward:", reward_sum / 100)
+                print("Iteration:", i, "\tCost:", cost, "\tScanned REs:", len(scanned), "\tQueue Size:", w.qsize(),
+                      "\tLoss:", format(loss.item(), '.3f'), "\tAvg Reward:", reward_sum / 100)
                 reward_sum = 0
 
             i = i + 1
 
+            # for 6 action, if chosen : cost, else: w.put()
             for action in range(6):
                 copied_state = copy.deepcopy(state)
                 if action == 0:
@@ -402,16 +428,9 @@ for i_episode in range(num_episodes):
 
                     w.put((cost + int(config['CLOSURE_COST']), copied_state))
 
-            if cost < 0 or cost > 5000:
-                print(cost, nextCost, chosen_action, state, next_state)
-
             cost = nextCost
             # 다음 상태로 이동
             state = next_state
-
-
-
-
 
 print('Complete')
 

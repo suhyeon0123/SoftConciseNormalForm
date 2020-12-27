@@ -62,9 +62,17 @@ def is_redundant(s, examples):
 
     #unroll
     # if there is #|# - infinite loop..
-    if '#|#' in repr(s):
+    '''if '#|#' in repr(s):
         unrolled_state = copy.deepcopy(s)
     elif type(s.r) == type(KleenStar()):
+        unrolled_state = copy.deepcopy(s)
+        unrolled_state.unroll_entire()
+    else:
+        unrolled_state = copy.deepcopy(s)
+        unrolled_state.unroll()'''
+
+
+    if type(s.r) == type(KleenStar()):
         unrolled_state = copy.deepcopy(s)
         unrolled_state.unroll_entire()
     else:
@@ -72,6 +80,7 @@ def is_redundant(s, examples):
         unrolled_state.unroll()
 
     #unrolled_state = copy.deepcopy(s)
+
 
 
     #split
