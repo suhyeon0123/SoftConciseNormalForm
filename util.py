@@ -4,6 +4,10 @@ from FAdo.fa import *
 import re2 as re
 from parsetree import *
 
+from examples import Examples
+from FAdo.cfg import *
+from xeger import Xeger
+
 def membership(regex, string):
     # print(regex)
     # print(regex, string)
@@ -12,6 +16,43 @@ def membership(regex, string):
 
 def membership2(regex, string):
     return str2regexp(regex).evalWordP(string)
+
+
+def gen_str():
+    str_list = []
+
+    for i in range(random.randrange(1,30)):
+        if random.randrange(1,3) == 1:
+            str_list.append('0')
+        else:
+            str_list.append('1')
+
+    return ''.join(str_list)
+
+def rand_example():
+    gen = reStringRGenerator(['0', '1'], random.randrange(3, 15), eps=None)
+    regex = gen.generate().replace('+', '|')
+    print(regex)
+
+    x = Xeger(limit=20)
+    pos_size = 10
+    pos_example = list()
+    for i in range(pos_size):
+        pos_example.append(x.xeger(regex))
+
+    neg_example = list()
+    for i in range(1000):
+        random_str = gen_str()
+        if random_str and not membership(regex, random_str):
+            neg_example.append(random_str)
+            if len(neg_example) == 10:
+                break
+
+    examples = Examples(1)
+    examples.setPos(pos_example)
+    examples.setNeg(neg_example)
+
+    return examples
 
 
 def is_solution(regex, examples, membership):

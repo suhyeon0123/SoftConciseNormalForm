@@ -4,7 +4,6 @@ import os
 
 
 class Examples(object):
-
     def __init__(self, no):
         self.pos_simple, self.neg_simple, self.answer = self.readFromFile(no)
         self.pos = list()

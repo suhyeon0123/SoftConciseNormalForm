@@ -431,7 +431,6 @@ class Or(RE):
         self.hasHole2 = True
 
     def __repr__(self):
-
         if self.string:
             return self.string
 
