@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="WebServers">
+    <option name="servers">
+      <webServer id="3fb1a5bf-ace7-4016-b46f-e2928b528330" name="ksk@knutoc.asuscomm.com:9000" url="http:///">
+        <fileTransfer rootFolder="/home/ksk" accessType="SFTP" host="knutoc.asuscomm.com" port="9000" sshConfigId="4e732c90-5f96-4b56-b8e0-900425a61b3b" sshConfig="ksk@knutoc.asuscomm.com:9000 password" />
+      </webServer>
+    </option>
+  </component>
+</project>

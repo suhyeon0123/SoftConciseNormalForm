@@ -7,6 +7,7 @@ from parsetree import *
 def membership(regex, string):
     # print(regex)
     # print(regex, string)
+    # print(regex, string)
     return bool(re.fullmatch(regex, string))
 
 def membership2(regex, string):
