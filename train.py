@@ -182,10 +182,10 @@ def make_next_state(state, action, examples):
         reward = -1
         return copied_state, reward, done, success
 
-    if repr(copied_state) in scanned:
-        done = True
-        reward = -1
-        return copied_state, reward, done, success
+    #if repr(copied_state) in scanned:
+    #    done = True
+    #    reward = -1
+    #    return copied_state, reward, done, success
 
     if is_pdead(copied_state, examples):
         #print("pd",state)
@@ -393,7 +393,7 @@ for i_episode in range(num_episodes):
 
             if i % 100 == 0:
                 loss = optimize_model()
-                print("Episode:", i_episode, "\tIteration:", i, "\tCost:", cost, "\tScanned REs:", len(scanned), "\tQueue Size:", w.qsize(), "\tLoss:", format(loss.item(), '.3f'), "\tAvg Reward:", reward_sum / 100)
+                print("Episode:", i_episode, "\tIteration:", i, "\tCost:", cost, "\tScanned REs:", len(scanned), "\tQueue Size:", w.qsize(), "\tLoss:", format(loss.item(), '.7f'), "\tAvg Reward:", reward_sum / 100)
                 reward_sum = 0
 
             i = i + 1

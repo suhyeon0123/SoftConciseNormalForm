@@ -235,12 +235,12 @@ def make_next_state(state, action, examples):
         reward = -1
         return copied_state, reward, done, success
 
-    if repr(copied_state) in scanned:
-        done = True
-        reward = -1
-        return copied_state, reward, done, success
-    else:
-        scanned.add(repr(copied_state))
+    #if repr(copied_state) in scanned:
+    #    done = True
+    #    reward = -1
+    #    return copied_state, reward, done, success
+    #else:
+    #    scanned.add(repr(copied_state))
 
     if is_pdead(copied_state, examples):
         #print("pd",state)
@@ -451,7 +451,7 @@ for i_episode in range(num_episodes):
 
             if i % 100 == 0:
                 loss = optimize_model(beta_by_frame(i))
-                print("Episode:", i_episode, "\tIteration:", i, "\tCost:", cost, "\tScanned REs:", len(scanned), "\tQueue Size:", w.qsize(), "\tLoss:", format(loss.item(), '.3f'), "\tAvg Reward:", reward_sum / 100)
+                print("Episode:", i_episode, "\tIteration:", i, "\tCost:", cost, "\tScanned REs:", len(scanned), "\tQueue Size:", w.qsize(), "\tLoss:", format(loss.item(), '.7f'), "\tAvg Reward:", reward_sum / 100)
                 reward_sum = 0
 
             i = i + 1
@@ -460,7 +460,7 @@ for i_episode in range(num_episodes):
                 break
 
     if i_episode % TARGET_UPDATE == 0:
-        torch.save(policy_net.state_dict(), 'saved_model/DQN.pth')
+        torch.save(policy_net.state_dict(), 'saved_model/PrioritizedDQN.pth')
         target_net.load_state_dict(policy_net.state_dict())
 
 
