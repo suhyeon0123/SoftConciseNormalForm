@@ -11,6 +11,7 @@ parser.add_argument("-e", "--examples", type=int,
                     help="Example number")
 parser.add_argument("-u", "--unambiguous", help="Set ambiguity",
                     action="store_true")
+parser.add_argument("-r", "--redundant", help="Set redundancy checker", action="store_true")
 args = parser.parse_args()
 
 
@@ -31,7 +32,7 @@ w = PriorityQueue()
 scanned = set()
 
 w.put((int(config['HOLE_COST']), RE()))
-examples = Examples(2)
+examples = Examples(args.examples)
 answer = examples.getAnswer()
 
 print(examples.getPos(), examples.getNeg())
@@ -81,9 +82,10 @@ while not w.empty() and not finished:
                 #print(repr(k), "is ndead")
                 continue
 
-            if is_redundant(k,examples):
-                #print(repr(k), "is redundant")
-                continue
+            if args.redundant:
+                if is_redundant(k,examples):
+                    #print(repr(k), "is redundant")
+                    continue
 
             if not k.hasHole():
                 if is_solution(repr(k), examples, membership):
