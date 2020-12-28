@@ -177,7 +177,7 @@ w = PriorityQueue()
 scanned = set()
 
 w.put((int(config['HOLE_COST']), RE()))
-examples = Examples(8)
+examples = Examples(args.examples)
 answer = examples.getAnswer()
 
 print(examples.getPos(), examples.getNeg())
@@ -190,6 +190,7 @@ prevCost = 0
 success = False
 
 while not w.empty() and not success:
+
     tmp = w.get()
     state = tmp[1]
     cost = tmp[0]
@@ -200,97 +201,74 @@ while not w.empty() and not success:
         continue
 
     for t in range(5):
-        chosen_action = select_action(*make_embeded(state,examples))
-        next_state, reward, done, success = make_next_state(state,chosen_action,examples)
+        chosen_action = select_action(*make_embeded(state, examples))
 
-        if done and w.qsize() != 0:
-            # print("count =",t)
+        buffer = cost
+
+        for j, new_elem in enumerate(
+                [Character('0'), Character('1'), Or(), Concatenate(), KleenStar(), Question()]):
+
+            k = copy.deepcopy(state)
+
+            if not k.spread(new_elem):
+                continue
+
+            if len(repr(k)) > LENGTH_LIMIT:
+                continue
+
+            traversed += 1
+            if repr(k) in scanned:
+                # print("Already scanned?", repr(k))
+                # print(list(scanned))
+                continue
+            else:
+                scanned.add(repr(k))
+
+            if is_pdead(k, examples):
+                # print(repr(k), "is pdead")
+                continue
+
+            if is_ndead(k, examples):
+                # print(repr(k), "is ndead")
+                continue
+
+            # if args.redundant:
+            #    if is_redundant(k, examples):
+            #        # print(repr(k), "is redundant")
+            #        continue
+
+            if not k.hasHole():
+                if is_solution(repr(k), examples, membership):
+                    end = time.time()
+                    print("Spent computation time:", end - start)
+                    print("Iteration:", i, "\tCost:", cost, "\tScanned REs:", len(scanned), "\tQueue Size:",
+                          w.qsize(), "\tTraversed:", traversed)
+                    # print("Result RE:", repr(k), "Verified by FAdo:", is_solution(repr(k), examples, membership2))
+                    print("Result RE:", repr(k))
+                    success = True
+                    break
+
+            if j != chosen_action[0][0].item():
+                w.put((k.cost, k))
+            else:
+                buffer = k.cost
+
+        if success:
             break
+        else:
+            next_state, reward, done, success = make_next_state(state, chosen_action, examples)
 
-        if i % 100 == 0:
-            print("Iteration:", i, "\tCost:", cost, "\tScanned REs:", len(scanned), "\tQueue Size:", w.qsize())
-            reward_sum = 0
+        cost = buffer
+        state = next_state
+
+        if i % 1000 == 0:
+            print("Iteration:", i, "\tCost:", cost, "\tScanned REs:", len(scanned),
+                  "\tQueue Size:", w.qsize())
 
         i = i + 1
 
-        for action in range(6):
-            copied_state = copy.deepcopy(state)
-            if action == 0:
-                if action == chosen_action:
-                    nextCost = cost - int(config['HOLE_COST']) + int(config['SYMBOL_COST'])
-                    continue
-
-                spread_result = copied_state.spread(Character('0'))
-
-                if len(repr(copied_state)) > LENGTH_LIMIT or not spread_result:
-                    continue
-
-                w.put((cost - int(config['HOLE_COST']) + int(config['SYMBOL_COST']), copied_state))
-            elif action == 1:
-                if action == chosen_action:
-                    nextCost = cost - int(config['HOLE_COST']) + int(config['SYMBOL_COST'])
-                    continue
-
-                spread_result = copied_state.spread(Character('1'))
-
-                if len(repr(copied_state)) > LENGTH_LIMIT or not spread_result:
-                    continue
-
-                w.put((cost - int(config['HOLE_COST']) + int(config['SYMBOL_COST']), copied_state))
-            elif action == 2:
-                if action == chosen_action:
-                    nextCost = cost + int(config['HOLE_COST']) + int(config['UNION_COST'])
-                    continue
-
-                spread_result = copied_state.spread(Or())
-
-                if len(repr(copied_state)) > LENGTH_LIMIT or not spread_result:
-                    continue
-
-                w.put((cost + int(config['HOLE_COST']) + int(config['UNION_COST']), copied_state))
-            elif action == 3:
-                if action == chosen_action:
-                    nextCost = cost + int(config['HOLE_COST']) + int(config['CONCAT_COST'])
-                    continue
-
-                spread_result = copied_state.spread(Concatenate())
-
-                if len(repr(copied_state)) > LENGTH_LIMIT or not spread_result:
-                    continue
-
-                w.put((cost + int(config['HOLE_COST']) + int(config['CONCAT_COST']), copied_state))
-            elif action == 4:
-                if action == chosen_action:
-                    nextCost = cost + int(config['CLOSURE_COST'])
-                    continue
-
-                spread_result = copied_state.spread(KleenStar())
-
-                if len(repr(copied_state)) > LENGTH_LIMIT or not spread_result:
-                    continue
-
-                w.put((cost + int(config['CLOSURE_COST']), copied_state))
-            elif action == 5:
-                if action == chosen_action:
-                    nextCost = cost + int(config['CLOSURE_COST'])
-                    continue
-
-                spread_result = copied_state.spread(Question())
-
-                if len(repr(copied_state)) > LENGTH_LIMIT or not spread_result:
-                    continue
-
-                w.put((cost + int(config['CLOSURE_COST']), copied_state))
-
-        if cost < 0 or cost > 5000:
-            print(cost, nextCost, chosen_action, state, next_state)
-
-
-
-        cost = nextCost
-        # 다음 상태로 이동
-        state = next_state
-
+        if done:
+            break
 
 print('Complete')
 
