@@ -31,7 +31,7 @@ w = PriorityQueue()
 
 scanned = set()
 
-w.put((int(config['HOLE_COST']), RE()))
+w.put((RE().cost, RE()))
 examples = Examples(args.examples)
 answer = examples.getAnswer()
 
@@ -52,9 +52,7 @@ while not w.empty() and not finished:
 
     prevCost = cost
 
-    hasHole = s.hasHole()
-
-    if hasHole :
+    if s.hasHole():
 
         for j, new_elem in enumerate([Character('0'), Character('1'), Or(), Concatenate(), KleenStar(), Question()]):
 
@@ -72,7 +70,6 @@ while not w.empty() and not finished:
                 continue
             else:
                 scanned.add(repr(k))
-
 
             if is_pdead(k, examples):
                 #print(repr(k), "is pdead")
@@ -98,14 +95,7 @@ while not w.empty() and not finished:
                     break
 
 
-            if j<2:
-                w.put((cost - int(config['HOLE_COST']) + int(config['SYMBOL_COST']), k))
-            elif j==2: # Union
-                w.put((cost + int(config['HOLE_COST']) + int(config['UNION_COST']) , k))
-            elif j==3: # Concatenation
-                w.put((cost + int(config['HOLE_COST']) + int(config['CONCAT_COST']) , k))
-            else: # Kleene Star
-                w.put((cost + int(config['CLOSURE_COST']) , k))
+            w.put((k.cost, k))
 
 
 

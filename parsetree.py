@@ -1,5 +1,10 @@
 #Regular Expression Implementation ,Written by Adrian Stoll
 import copy
+import configparser
+
+config = configparser.ConfigParser()
+config.read('config.ini')
+config = config['default']
 
 class Hole:
     def __init__(self):
@@ -29,6 +34,7 @@ class RE:
         self.hasHole2 = True
         self.string = None
         self.first = True
+        self.cost = int(config['HOLE_COST'])
 
     def __repr__(self):
         if not self.string:
@@ -42,6 +48,16 @@ class RE:
             self.hasHole2 = False
         return self.hasHole2
     def spread(self, case):
+
+        if type(case) == type(Concatenate()):
+            self.cost += int(config['HOLE_COST']) + int(config['CONCAT_COST'])
+        elif type(case) == type(Or()):
+            self.cost += int(config['HOLE_COST']) + int(config['UNION_COST'])
+        elif type(case) == type(KleenStar()) or type(case) == type(Question()):
+            self.cost += int(config['HOLE_COST']) + int(config['CLOSURE_COST'])
+        else:
+            self.cost += -int(config['HOLE_COST']) + int(config['SYMBOL_COST'])
+
         self.string = None
 
         if self.first:

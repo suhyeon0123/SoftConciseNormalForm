@@ -186,8 +186,6 @@ def make_next_state(state, action, examples):
         done = True
         reward = -1
         return copied_state, reward, done, success
-    else:
-        scanned.add(repr(copied_state))
 
     if is_pdead(copied_state, examples):
         #print("pd",state)
@@ -292,15 +290,15 @@ start = time.time()
 
 loss = 0
 reward_sum = 0
+traversed = 0
 
 for i_episode in range(num_episodes):
 
     #example_num = random.randint(1, 26)
-    #examples = Examples(2)
-    examples = rand_example()
+    examples = Examples(2)
+    #examples = rand_example()
 
-    w.put((int(config['HOLE_COST']), RE()))
-
+    w.put((RE().cost, RE()))
 
     while not w.empty() and not finished:
         if success or i > 5000:
@@ -310,7 +308,7 @@ for i_episode in range(num_episodes):
             scanned.clear()
             i = 0
             break
-            w.put((int(config['HOLE_COST']), RE()))
+            w.put((RE().cost, RE()))
             print("Restart")
 
         tmp = w.get()
@@ -322,19 +320,68 @@ for i_episode in range(num_episodes):
         if not state.hasHole():
             continue
 
-        for t in range(10):
-            chosen_action = select_action(*make_embeded(state,examples))
-            next_state, reward, done, success = make_next_state(state,chosen_action,examples)
+        for t in range(5):
+            chosen_action = select_action(*make_embeded(state, examples))
+            next_state, reward, done, success = make_next_state(state, chosen_action, examples)
 
             reward_sum += reward
 
-            memory.push(*make_embeded(state, examples), chosen_action, make_embeded(next_state, examples)[0], torch.FloatTensor([reward]).to(device), done)
+            memory.push(*make_embeded(state, examples), chosen_action, make_embeded(next_state, examples)[0],
+                        torch.FloatTensor([reward]).to(device), done)
+
+            buffer = cost
+
+            for j, new_elem in enumerate(
+                    [Character('0'), Character('1'), Or(), Concatenate(), KleenStar(), Question()]):
+
+                k = copy.deepcopy(state)
+
+                if not k.spread(new_elem):
+                    continue
+
+                if len(repr(k)) > LENGTH_LIMIT:
+                    continue
+
+                traversed += 1
+                if repr(k) in scanned:
+                    # print("Already scanned?", repr(k))
+                    # print(list(scanned))
+                    continue
+                else:
+                    scanned.add(repr(k))
+
+                if is_pdead(k, examples):
+                    # print(repr(k), "is pdead")
+                    continue
+
+                if is_ndead(k, examples):
+                    # print(repr(k), "is ndead")
+                    continue
+
+                #if args.redundant:
+                #    if is_redundant(k, examples):
+                #        # print(repr(k), "is redundant")
+                #        continue
+
+                if not k.hasHole():
+                    if is_solution(repr(k), examples, membership):
+                        end = time.time()
+                        print("Spent computation time:", end - start)
+                        print("Iteration:", i, "\tCost:", cost, "\tScanned REs:", len(scanned), "\tQueue Size:",
+                              w.qsize(), "\tTraversed:", traversed)
+                        # print("Result RE:", repr(k), "Verified by FAdo:", is_solution(repr(k), examples, membership2))
+                        print("Result RE:", repr(k))
+                        #finished = True
+                        break
 
 
+                if j != chosen_action[0][0].item():
+                    w.put((k.cost, k))
+                else:
+                    buffer = k.cost
 
-            if done and w.qsize() != 0:
-                # print("count =",t)
-                break
+            cost = buffer
+            state = next_state
 
             if i % 100 == 0:
                 loss = optimize_model()
@@ -343,84 +390,11 @@ for i_episode in range(num_episodes):
 
             i = i + 1
 
-            for action in range(6):
-                copied_state = copy.deepcopy(state)
-                if action == 0:
-                    if action == chosen_action:
-                        nextCost = cost - int(config['HOLE_COST']) + int(config['SYMBOL_COST'])
-                        continue
-
-                    spread_result = copied_state.spread(Character('0'))
-
-                    if len(repr(copied_state)) > LENGTH_LIMIT or not spread_result:
-                        continue
-
-                    w.put((cost - int(config['HOLE_COST']) + int(config['SYMBOL_COST']), copied_state))
-                elif action == 1:
-                    if action == chosen_action:
-                        nextCost = cost - int(config['HOLE_COST']) + int(config['SYMBOL_COST'])
-                        continue
-
-                    spread_result = copied_state.spread(Character('1'))
-
-                    if len(repr(copied_state)) > LENGTH_LIMIT or not spread_result:
-                        continue
-
-                    w.put((cost - int(config['HOLE_COST']) + int(config['SYMBOL_COST']), copied_state))
-                elif action == 2:
-                    if action == chosen_action:
-                        nextCost = cost + int(config['HOLE_COST']) + int(config['UNION_COST'])
-                        continue
-
-                    spread_result = copied_state.spread(Or())
-
-                    if len(repr(copied_state)) > LENGTH_LIMIT or not spread_result:
-                        continue
-
-                    w.put((cost + int(config['HOLE_COST']) + int(config['UNION_COST']), copied_state))
-                elif action == 3:
-                    if action == chosen_action:
-                        nextCost = cost + int(config['HOLE_COST']) + int(config['CONCAT_COST'])
-                        continue
-
-                    spread_result = copied_state.spread(Concatenate())
-
-                    if len(repr(copied_state)) > LENGTH_LIMIT or not spread_result:
-                        continue
-
-                    w.put((cost + int(config['HOLE_COST']) + int(config['CONCAT_COST']), copied_state))
-                elif action == 4:
-                    if action == chosen_action:
-                        nextCost = cost + int(config['CLOSURE_COST'])
-                        continue
-
-                    spread_result = copied_state.spread(KleenStar())
-
-                    if len(repr(copied_state)) > LENGTH_LIMIT or not spread_result:
-                        continue
-
-                    w.put((cost + int(config['CLOSURE_COST']), copied_state))
-                elif action == 5:
-                    if action == chosen_action:
-                        nextCost = cost + int(config['CLOSURE_COST'])
-                        continue
-
-                    spread_result = copied_state.spread(Question())
-
-                    if len(repr(copied_state)) > LENGTH_LIMIT or not spread_result:
-                        continue
-
-                    w.put((cost + int(config['CLOSURE_COST']), copied_state))
-
-            if cost < 0 or cost > 5000:
-                print(cost, nextCost, chosen_action, state, next_state)
-
-            cost = nextCost
-            # 다음 상태로 이동
-            state = next_state
+            if done:
+                break
 
     if i_episode % TARGET_UPDATE == 0:
-        torch.save(policy_net.state_dict(), 'saved_model/DQN_random_example.pth')
+        torch.save(policy_net.state_dict(), 'saved_model/DQN.pth')
         target_net.load_state_dict(policy_net.state_dict())
 
 
