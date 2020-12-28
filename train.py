@@ -420,7 +420,7 @@ for i_episode in range(num_episodes):
             state = next_state
 
     if i_episode % TARGET_UPDATE == 0:
-        torch.save(policy_net.state_dict(), 'saved_model/DQN.pth')
+        torch.save(policy_net.state_dict(), 'saved_model/DQN_random_example.pth')
         target_net.load_state_dict(policy_net.state_dict())
 
 

@@ -21,7 +21,7 @@ def membership2(regex, string):
 def gen_str():
     str_list = []
 
-    for i in range(random.randrange(1,30)):
+    for i in range(random.randrange(1,7)):
         if random.randrange(1,3) == 1:
             str_list.append('0')
         else:
@@ -34,16 +34,20 @@ def rand_example():
     regex = gen.generate().replace('+', '|')
     print(regex)
 
-    x = Xeger(limit=20)
+    x = Xeger(limit=10)
     pos_size = 10
     pos_example = list()
-    for i in range(pos_size):
-        pos_example.append(x.xeger(regex))
+    for i in range(1000):
+        randStr = x.xeger(regex)
+        if len(randStr) <= 7 and randStr not in pos_example:
+            pos_example.append(randStr)
+            if len(pos_example) == 10:
+                break
 
     neg_example = list()
     for i in range(1000):
         random_str = gen_str()
-        if random_str and not membership(regex, random_str):
+        if not membership(regex, random_str) and random_str not in neg_example:
             neg_example.append(random_str)
             if len(neg_example) == 10:
                 break
@@ -51,6 +55,8 @@ def rand_example():
     examples = Examples(1)
     examples.setPos(pos_example)
     examples.setNeg(neg_example)
+
+    print(examples.getPos(), examples.getNeg())
 
     return examples
 
