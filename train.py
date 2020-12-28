@@ -322,12 +322,6 @@ for i_episode in range(num_episodes):
 
         for t in range(5):
             chosen_action = select_action(*make_embeded(state, examples))
-            next_state, reward, done, success = make_next_state(state, chosen_action, examples)
-
-            reward_sum += reward
-
-            memory.push(*make_embeded(state, examples), chosen_action, make_embeded(next_state, examples)[0],
-                        torch.FloatTensor([reward]).to(device), done)
 
             buffer = cost
 
@@ -371,7 +365,13 @@ for i_episode in range(num_episodes):
                               w.qsize(), "\tTraversed:", traversed)
                         # print("Result RE:", repr(k), "Verified by FAdo:", is_solution(repr(k), examples, membership2))
                         print("Result RE:", repr(k))
-                        #finished = True
+
+                        next_state, reward, done, success = make_next_state(state, j, examples)
+                        memory.push(*make_embeded(state, examples), torch.LongTensor([[j]]).to(device),
+                                    make_embeded(next_state, examples)[0],
+                                    torch.FloatTensor([reward]).to(device), done)
+
+                        success = True
                         break
 
 
@@ -379,6 +379,14 @@ for i_episode in range(num_episodes):
                     w.put((k.cost, k))
                 else:
                     buffer = k.cost
+
+            if success:
+                break
+            else:
+                next_state, reward, done, success = make_next_state(state, chosen_action, examples)
+                reward_sum += reward
+                memory.push(*make_embeded(state, examples), chosen_action, make_embeded(next_state, examples)[0],
+                            torch.FloatTensor([reward]).to(device), done)
 
             cost = buffer
             state = next_state
