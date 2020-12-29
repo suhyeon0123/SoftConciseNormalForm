@@ -18,9 +18,9 @@ args = parser.parse_args()
 
 def select_action(regex_tensor, pos_tensor, neg_tensor):
     with torch.no_grad():
-        print(regex_tensor, pos_tensor)
+        #print(regex_tensor, pos_tensor)
         a = policy_net(regex_tensor, pos_tensor, neg_tensor) #(1,6)
-        print(torch.argmax(a).view(-1,1))
+        #print(torch.argmax(a).view(-1,1))
         #return torch.tensor([[random.randrange(n_actions)]], device=device, dtype=torch.long)
     return torch.argmax(a).view(-1,1)
 
@@ -49,12 +49,12 @@ def make_next_state(state, action, examples):
         reward = -1
         return copied_state, reward, done, success
 
-    if repr(copied_state) in scanned:
-        done = True
-        reward = -1
-        return copied_state, reward, done, success
-    else:
-        scanned.add(repr(copied_state))
+    #if repr(copied_state) in scanned:
+    #    done = True
+    #    reward = -1
+    #    return copied_state, reward, done, success
+    #else:
+    #    scanned.add(repr(copied_state))
 
     if is_pdead(copied_state, examples):
         #print("pd",state)
