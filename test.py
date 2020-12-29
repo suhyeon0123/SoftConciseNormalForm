@@ -181,7 +181,7 @@ w = PriorityQueue()
 scanned = set()
 
 w.put((RE().cost, RE()))
-examples = Examples(2)
+examples = Examples(args.examples)
 answer = examples.getAnswer()
 
 print(examples.getPos(), examples.getNeg())
