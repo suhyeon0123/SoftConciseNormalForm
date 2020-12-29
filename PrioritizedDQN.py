@@ -403,10 +403,14 @@ for i_episode in range(num_episodes):
                     scanned.add(repr(k))
 
                 if is_pdead(k, examples):
+                    memory.push(*make_embeded(state, examples), chosen_action, make_embeded(k, examples)[0],
+                                torch.FloatTensor([-1]).to(device), False)
                     # print(repr(k), "is pdead")
                     continue
 
                 if is_ndead(k, examples):
+                    memory.push(*make_embeded(state, examples), chosen_action, make_embeded(k, examples)[0],
+                                torch.FloatTensor([-1]).to(device), False)
                     # print(repr(k), "is ndead")
                     continue
 
@@ -431,6 +435,9 @@ for i_episode in range(num_episodes):
 
                         success = True
                         break
+                    else:
+                        memory.push(*make_embeded(state, examples), chosen_action, make_embeded(k, examples)[0],
+                                    torch.FloatTensor([-1]).to(device), False)
 
 
                 if j != chosen_action[0][0].item():

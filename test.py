@@ -17,7 +17,11 @@ args = parser.parse_args()
 #-----------------------------------
 
 def select_action(regex_tensor, pos_tensor, neg_tensor):
-    a = policy_net(regex_tensor, pos_tensor, neg_tensor) #(1,6)
+    with torch.no_grad():
+        print(regex_tensor, pos_tensor)
+        a = policy_net(regex_tensor, pos_tensor, neg_tensor) #(1,6)
+        print(torch.argmax(a).view(-1,1))
+        #return torch.tensor([[random.randrange(n_actions)]], device=device, dtype=torch.long)
     return torch.argmax(a).view(-1,1)
 
 
@@ -176,8 +180,8 @@ w = PriorityQueue()
 
 scanned = set()
 
-w.put((int(config['HOLE_COST']), RE()))
-examples = Examples(args.examples)
+w.put((RE().cost, RE()))
+examples = Examples(2)
 answer = examples.getAnswer()
 
 print(examples.getPos(), examples.getNeg())

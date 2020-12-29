@@ -62,7 +62,7 @@ class ReplayBuffer(object):
 
 BATCH_SIZE = 32
 GAMMA = 0.999
-EPS_START = 1.0
+EPS_START = 1
 EPS_END = 0.01
 EPS_DECAY = 50000
 TARGET_UPDATE = 1
@@ -75,6 +75,9 @@ n_actions = 6
 embed_n = 500
 
 policy_net = DQN().to(device)
+
+policy_net.load_state_dict(torch.load('saved_model/DQN.pth'))
+
 target_net = DQN().to(device)
 target_net.load_state_dict(policy_net.state_dict())
 target_net.eval()
@@ -115,7 +118,7 @@ def select_action(regex_tensor, pos_tensor, neg_tensor):
 def optimize_model():
     if len(memory) < REPLAY_INITIAL:
         return torch.FloatTensor([0])
-    transitions = memory.prioritized_sample(BATCH_SIZE)
+    transitions = memory.sample(BATCH_SIZE)
     # Transpose the batch (see https://stackoverflow.com/a/19343/3343043 for
     # detailed explanation). 이것은 batch-array의 Transitions을 Transition의 batch-arrays로
     # 전환합니다.
@@ -345,10 +348,14 @@ for i_episode in range(num_episodes):
                     scanned.add(repr(k))
 
                 if is_pdead(k, examples):
+                    memory.push(*make_embeded(state, examples), chosen_action, make_embeded(k, examples)[0],
+                                torch.FloatTensor([-1]).to(device), False)
                     # print(repr(k), "is pdead")
                     continue
 
                 if is_ndead(k, examples):
+                    memory.push(*make_embeded(state, examples), chosen_action, make_embeded(k, examples)[0],
+                                torch.FloatTensor([-1]).to(device), False)
                     # print(repr(k), "is ndead")
                     continue
 
@@ -373,6 +380,9 @@ for i_episode in range(num_episodes):
 
                         success = True
                         break
+                    else:
+                        memory.push(*make_embeded(state, examples), chosen_action, make_embeded(k, examples)[0],
+                                    torch.FloatTensor([-1]).to(device), False)
 
 
                 if j != chosen_action[0][0].item():
