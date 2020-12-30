@@ -7,7 +7,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class DQN(nn.Module):
 
-    def __init__(self, num_symbols=12, embedding_dim=4, hidden_dim=256, num_actions=6):
+    def __init__(self, num_symbols=12, embedding_dim=4, hidden_dim=64, num_actions=6):
         super(DQN, self).__init__()
 
         self.hidden_dim = hidden_dim
@@ -15,9 +15,9 @@ class DQN(nn.Module):
         self.symb_embeddings = nn.Embedding(num_symbols, embedding_dim)
 
 
-        self.pos_rnn = nn.LSTM(input_size=embedding_dim, hidden_size=hidden_dim, num_layers=2)
-        self.neg_rnn = nn.LSTM(input_size=embedding_dim, hidden_size=hidden_dim, num_layers=2)
-        self.regex_rnn = nn.LSTM(input_size=embedding_dim, hidden_size=hidden_dim, num_layers=2)
+        self.pos_rnn = nn.LSTM(input_size=embedding_dim, hidden_size=hidden_dim, num_layers=1)
+        self.neg_rnn = nn.LSTM(input_size=embedding_dim, hidden_size=hidden_dim, num_layers=1)
+        self.regex_rnn = nn.LSTM(input_size=embedding_dim, hidden_size=hidden_dim, num_layers=1)
 
         self.fc1 = nn.Linear(self.hidden_dim * 3, self.hidden_dim)
         self.fc2 = nn.Linear(self.hidden_dim, num_actions)

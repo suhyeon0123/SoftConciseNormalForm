@@ -217,19 +217,13 @@ def optimize_model(beta=0.4):
     expected_state_action_values = (next_state_values * GAMMA) * (1 - done_batch) + reward_batch
 
     if args.prioritized:
-        loss = (state_action_values.squeeze(1) - expected_state_action_values).pow(2) * torch.FloatTensor(weights).to(
+        loss = (state_action_values.squeeze(1) - expected_state_action_values.detach()).pow(2) * torch.FloatTensor(weights).to(
             device).detach()
         prios = loss + 1e-5
         loss = loss.mean()
     else:
         # Huber 손실 계산
         loss = F.smooth_l1_loss(state_action_values, expected_state_action_values.unsqueeze(1).detach())
-
-
-
-    # 모델 최적화
-    optimizer.zero_grad()
-    loss.backward()
 
     if args.prioritized:
         memory.update_priorities(indices, prios.data.cpu().numpy())
@@ -492,7 +486,11 @@ for i_episode in range(num_episodes):
             cost = buffer
             state = next_state
 
-            loss = optimize_model()
+            if args.prioritized:
+                loss = optimize_model(beta_by_frame(i))
+            else:
+                loss = optimize_model()
+
             if i % 100 == 0:
                 print("Episode:", i_episode, "\tIteration:", i, "\tCost:", cost, "\tScanned REs:", len(scanned), "\tQueue Size:", w.qsize(), "\tLoss:", format(loss.item(), '.7f'), "\tAvg Reward:", reward_sum / reward_num)
                 reward_sum = 0
@@ -503,9 +501,12 @@ for i_episode in range(num_episodes):
             if done:
                 break
 
-    #if i_episode % TARGET_UPDATE == 0:
-    #    torch.save(policy_net.state_dict(), 'saved_model/DQN.pth')
-    #    target_net.load_state_dict(policy_net.state_dict())
+    if i_episode % TARGET_UPDATE == 0:
+        if args.prioritized:
+            torch.save(policy_net.state_dict(), 'saved_model/Prioritized_DQN.pth')
+        else:
+            torch.save(policy_net.state_dict(), 'saved_model/DQN.pth')
+        target_net.load_state_dict(policy_net.state_dict())
 
 
 
