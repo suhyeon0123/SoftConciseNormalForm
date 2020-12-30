@@ -39,7 +39,6 @@ class DQN(nn.Module):
         pos_embedded = self.symb_embeddings(pos)
         neg_embedded = self.symb_embeddings(neg)
 
-
         regex_embedded = regex_embedded.permute(1, 0, 2)
         pos_embedded = pos_embedded.permute(1, 0, 2)
         neg_embedded = neg_embedded.permute(1, 0, 2)

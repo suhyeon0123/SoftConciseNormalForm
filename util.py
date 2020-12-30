@@ -7,6 +7,13 @@ from parsetree import *
 from examples import Examples
 from FAdo.cfg import *
 from xeger import Xeger
+import time
+from torch.nn.utils.rnn import pad_sequence
+import torch
+
+
+LENGTH_LIMIT = 30
+EXAMPLE_LENGHT_LIMIT = 100
 
 def membership(regex, string):
     # print(regex)
@@ -44,6 +51,116 @@ def gen_str():
             str_list.append('1')
 
     return ''.join(str_list)
+
+def make_next_state(state, action, examples):
+
+    copied_state = copy.deepcopy(state)
+
+    success = False
+
+    if action==0:
+        spread_success = copied_state.spread(Character('0'))
+    elif action == 1:
+        spread_success = copied_state.spread(Character('1'))
+    elif action == 2:
+        spread_success = copied_state.spread(Or())
+    elif action == 3:
+        spread_success = copied_state.spread(Concatenate())
+    elif action == 4:
+        spread_success = copied_state.spread(KleenStar())
+    elif action == 5:
+        spread_success = copied_state.spread(Question())
+
+    if len(repr(copied_state)) > LENGTH_LIMIT or not spread_success:
+        done = True
+        reward = -100
+        return copied_state, reward, done, success
+
+    #if repr(copied_state) in scanned:
+    #    done = True
+    #    reward = -1
+    #    return copied_state, reward, done, success
+
+    if is_pdead(copied_state, examples):
+        #print("pd",state)
+        #print(examples.getPos())
+        done = True
+        reward = -100
+        return copied_state, reward, done, success
+
+    if is_ndead(copied_state, examples):
+        #print("nd",state)
+        done = True
+        reward = -100
+        return copied_state, reward, done, success
+
+    #if is_redundant(copied_state, examples):
+    #    #print("rd ",state )
+    #    done = True
+    #    reward = 0
+    #    return copied_state, reward, done, success
+
+    if not copied_state.hasHole():
+        done = True
+        if is_solution(repr(copied_state), examples, membership):
+            success = True
+            reward = 100 * (LENGTH_LIMIT + 5 - len(repr(copied_state)))
+        else:
+            reward = -100
+    else:
+        done = False
+        reward = -10
+
+    return copied_state, reward, done, success
+
+
+def make_embeded(state,examples):
+
+    pos_examples = examples.getPos()
+    neg_examples = examples.getNeg()
+
+    word_index = {'0': 1, '1': 2, '(': 3, ')': 4, '?': 5, '*': 6, '|': 7,
+                  'X': 8, '#': 9}
+    encoded = []
+    for c in repr(state):
+        try:
+            encoded.append(word_index[c])
+        except KeyError:
+            encoded.append(100)
+
+    #encoded += [0] * (LENGTH_LIMIT + 5 - len(encoded))
+
+    regex_tensor = torch.LongTensor(encoded)
+
+    encoded = []
+    for example in pos_examples:
+        if len(example) + len(encoded) +1 > EXAMPLE_LENGHT_LIMIT:
+            break
+        for c in example:
+            try:
+                encoded.append(word_index[c])
+            except KeyError:
+                encoded.append(100)
+        encoded.append(10)
+
+    #encoded += [0] * (EXAMPLE_LENGHT_LIMIT - len(encoded))
+    pos_example_tensor = torch.LongTensor(encoded)
+
+    encoded = []
+    for example in neg_examples:
+        if len(example) + len(encoded) +1 > EXAMPLE_LENGHT_LIMIT:
+            break
+        for c in example:
+            try:
+                encoded.append(word_index[c])
+            except KeyError:
+                encoded.append(100)
+        encoded.append(10)
+
+    #encoded += [0] * (EXAMPLE_LENGHT_LIMIT - len(encoded))
+    neg_example_tensor = torch.LongTensor(encoded)
+
+    return regex_tensor, pos_example_tensor, neg_example_tensor
 
 def rand_example():
     gen = reStringRGenerator(['0', '1'], random.randrange(3, 15), eps=None)
