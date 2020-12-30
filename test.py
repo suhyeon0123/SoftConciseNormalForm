@@ -16,11 +16,29 @@ args = parser.parse_args()
 
 #-----------------------------------
 
+def tensor_to_regex(regex_tensor):
+    word_index = {'pad': 0, '0': 1, '1': 2, '(': 3, ')': 4, '?': 5, '*': 6, '|': 7,
+                  'X': 8, '#': 9}
+    inverse_word_index = {v: k for k, v in word_index.items()}
+
+    regex = ''
+
+    for i in range(regex_tensor.shape[1]):
+        index = inverse_word_index[regex_tensor[0, i].item()]
+
+        if index == 'pad':
+            break
+
+        regex += str(index)
+
+    return regex
+
+
 def select_action(regex_tensor, pos_tensor, neg_tensor):
     with torch.no_grad():
         #print(regex_tensor, pos_tensor)
         a = policy_net(regex_tensor, pos_tensor, neg_tensor) #(1,6)
-        #print(torch.argmax(a).view(-1,1))
+        print(tensor_to_regex(regex_tensor), "\t\t", torch.argmax(a).view(-1,1)[0][0].item())
         #return torch.tensor([[random.randrange(n_actions)]], device=device, dtype=torch.long)
     return torch.argmax(a).view(-1,1)
 
@@ -161,7 +179,8 @@ embed_n = 500
 
 policy_net = DQN().to(device)
 
-policy_net.load_state_dict(torch.load('saved_model/DQN.pth'))
+#policy_net.load_state_dict(torch.load('saved_model/DQN.pth'))
+policy_net.load_state_dict(torch.load('saved_model/PrioritizedDQN.pth'))
 policy_net.eval()
 
 sys.setrecursionlimit(5000000)

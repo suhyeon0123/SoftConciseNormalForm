@@ -103,7 +103,7 @@ EPS_END = 0.01
 EPS_DECAY = 50000
 TARGET_UPDATE = 1
 
-LENGTH_LIMIT = 15
+LENGTH_LIMIT = 30
 EXAMPLE_LENGHT_LIMIT = 100
 
 # gym 행동 공간에서 행동의 숫자를 얻습니다.
@@ -122,7 +122,7 @@ target_net.load_state_dict(policy_net.state_dict())
 target_net.eval()
 
 #optimizer = optim.RMSprop(policy_net.parameters())
-optimizer = optim.Adam(policy_net.parameters(), lr=0.0001)
+optimizer = optim.Adam(policy_net.parameters(), lr=0.001)
 
 REPLAY_INITIAL = 10000
 REPALY_MEMORY_SIZE = 1000000
@@ -232,27 +232,25 @@ def make_next_state(state, action, examples):
 
     if len(repr(copied_state)) > LENGTH_LIMIT or not spread_success:
         done = True
-        reward = -1
+        reward = -100
         return copied_state, reward, done, success
 
     #if repr(copied_state) in scanned:
     #    done = True
     #    reward = -1
     #    return copied_state, reward, done, success
-    #else:
-    #    scanned.add(repr(copied_state))
 
     if is_pdead(copied_state, examples):
         #print("pd",state)
         #print(examples.getPos())
         done = True
-        reward = -1
+        reward = -100
         return copied_state, reward, done, success
 
     if is_ndead(copied_state, examples):
         #print("nd",state)
         done = True
-        reward = -1
+        reward = -100
         return copied_state, reward, done, success
 
     #if is_redundant(copied_state, examples):
@@ -268,15 +266,79 @@ def make_next_state(state, action, examples):
             end = time.time()
             print("Spent computation time:", end - start)
             print("Found solution: ", copied_state, "Solution length: ", len(repr(copied_state)))
-            reward = 1 * (LENGTH_LIMIT + 10 - len(repr(copied_state)))
+            reward = 100 * (LENGTH_LIMIT + 5 - len(repr(copied_state)))
         else:
-            reward = -1
+            reward = -100
     else:
         done = False
-        reward = 0
+        reward = -10
 
     return copied_state, reward, done, success
 
+
+def make_next_state(state, action, examples):
+
+    copied_state = copy.deepcopy(state)
+
+    success = False
+
+    if action==0:
+        spread_success = copied_state.spread(Character('0'))
+    elif action == 1:
+        spread_success = copied_state.spread(Character('1'))
+    elif action == 2:
+        spread_success = copied_state.spread(Or())
+    elif action == 3:
+        spread_success = copied_state.spread(Concatenate())
+    elif action == 4:
+        spread_success = copied_state.spread(KleenStar())
+    elif action == 5:
+        spread_success = copied_state.spread(Question())
+
+    if len(repr(copied_state)) > LENGTH_LIMIT or not spread_success:
+        done = True
+        reward = -100
+        return copied_state, reward, done, success
+
+    #if repr(copied_state) in scanned:
+    #    done = True
+    #    reward = -1
+    #    return copied_state, reward, done, success
+
+    if is_pdead(copied_state, examples):
+        #print("pd",state)
+        #print(examples.getPos())
+        done = True
+        reward = -100
+        return copied_state, reward, done, success
+
+    if is_ndead(copied_state, examples):
+        #print("nd",state)
+        done = True
+        reward = -100
+        return copied_state, reward, done, success
+
+    #if is_redundant(copied_state, examples):
+    #    #print("rd ",state )
+    #    done = True
+    #    reward = 0
+    #    return copied_state, reward, done, success
+
+    if not copied_state.hasHole():
+        done = True
+        if is_solution(repr(copied_state), examples, membership):
+            success = True
+            end = time.time()
+            print("Spent computation time:", end - start)
+            print("Found solution: ", copied_state, "Solution length: ", len(repr(copied_state)))
+            reward = 100 * (LENGTH_LIMIT + 5 - len(repr(copied_state)))
+        else:
+            reward = -100
+    else:
+        done = False
+        reward = -10
+
+    return copied_state, reward, done, success
 
 def make_embeded(state,examples):
 
@@ -294,7 +356,7 @@ def make_embeded(state,examples):
 
     encoded += [0] * (LENGTH_LIMIT + 5 - len(encoded))
 
-    regex_tensor = torch.LongTensor(encoded).view(1, LENGTH_LIMIT + 5)
+    regex_tensor = torch.LongTensor(encoded).view(1, LENGTH_LIMIT+5)
 
     encoded = []
     for example in pos_examples:
@@ -326,7 +388,6 @@ def make_embeded(state,examples):
 
     return regex_tensor, pos_example_tensor, neg_example_tensor
 
-
 def state_value(state, examples):
     return - target_net(*make_embeded(state, examples)).view(-1,6).max(1)[0].detach()[0]
 
@@ -340,7 +401,7 @@ finished = False
 success = False
 
 
-num_episodes = 10000
+num_episodes = 100000
 
 i = 0
 
@@ -348,6 +409,7 @@ start = time.time()
 
 loss = 0
 reward_sum = 0
+reward_num = 0
 traversed = 0
 
 for i_episode in range(num_episodes):
@@ -403,14 +465,14 @@ for i_episode in range(num_episodes):
                     scanned.add(repr(k))
 
                 if is_pdead(k, examples):
-                    memory.push(*make_embeded(state, examples), chosen_action, make_embeded(k, examples)[0],
-                                torch.FloatTensor([-1]).to(device), False)
+                    memory.push(*make_embeded(state, examples), torch.LongTensor([[j]]).to(device), make_embeded(k, examples)[0],
+                                torch.FloatTensor([-100]).to(device), True)
                     # print(repr(k), "is pdead")
                     continue
 
                 if is_ndead(k, examples):
-                    memory.push(*make_embeded(state, examples), chosen_action, make_embeded(k, examples)[0],
-                                torch.FloatTensor([-1]).to(device), False)
+                    memory.push(*make_embeded(state, examples), torch.LongTensor([[j]]).to(device), make_embeded(k, examples)[0],
+                                torch.FloatTensor([-100]).to(device), True)
                     # print(repr(k), "is ndead")
                     continue
 
@@ -429,6 +491,8 @@ for i_episode in range(num_episodes):
                         print("Result RE:", repr(k))
 
                         next_state, reward, done, success = make_next_state(state, j, examples)
+                        reward_sum += reward
+                        reward_num += 1
                         memory.push(*make_embeded(state, examples), torch.LongTensor([[j]]).to(device),
                                     make_embeded(next_state, examples)[0],
                                     torch.FloatTensor([reward]).to(device), done)
@@ -436,8 +500,14 @@ for i_episode in range(num_episodes):
                         success = True
                         break
                     else:
-                        memory.push(*make_embeded(state, examples), chosen_action, make_embeded(k, examples)[0],
-                                    torch.FloatTensor([-1]).to(device), False)
+                        memory.push(*make_embeded(state, examples), torch.LongTensor([[j]]).to(device), make_embeded(k, examples)[0],
+                                    torch.FloatTensor([-100]).to(device), True)
+                else:
+                    next_state, reward, done, success = make_next_state(state, j, examples)
+                    reward_sum += reward
+                    reward_num += 1
+                    memory.push(*make_embeded(state, examples), torch.LongTensor([[j]]).to(device), make_embeded(next_state, examples)[0],
+                                torch.FloatTensor([reward]).to(device), done)
 
 
                 if j != chosen_action[0][0].item():
@@ -449,17 +519,15 @@ for i_episode in range(num_episodes):
                 break
             else:
                 next_state, reward, done, success = make_next_state(state, chosen_action, examples)
-                reward_sum += reward
-                memory.push(*make_embeded(state, examples), chosen_action, make_embeded(next_state, examples)[0],
-                            torch.FloatTensor([reward]).to(device), done)
 
             cost = buffer
             state = next_state
 
+            loss = optimize_model(beta_by_frame(i))
             if i % 100 == 0:
-                loss = optimize_model(beta_by_frame(i))
-                print("Episode:", i_episode, "\tIteration:", i, "\tCost:", cost, "\tScanned REs:", len(scanned), "\tQueue Size:", w.qsize(), "\tLoss:", format(loss.item(), '.7f'), "\tAvg Reward:", reward_sum / 100)
+                print("Episode:", i_episode, "\tIteration:", i, "\tCost:", cost, "\tScanned REs:", len(scanned), "\tQueue Size:", w.qsize(), "\tLoss:", format(loss.item(), '.7f'), "\tAvg Reward:", reward_sum / reward_num)
                 reward_sum = 0
+                reward_num = 0
 
             i = i + 1
 
@@ -469,6 +537,7 @@ for i_episode in range(num_episodes):
     if i_episode % TARGET_UPDATE == 0:
         torch.save(policy_net.state_dict(), 'saved_model/PrioritizedDQN.pth')
         target_net.load_state_dict(policy_net.state_dict())
+
 
 
 print('Complete')

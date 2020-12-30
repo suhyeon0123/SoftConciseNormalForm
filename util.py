@@ -17,6 +17,22 @@ def membership(regex, string):
 def membership2(regex, string):
     return str2regexp(regex).evalWordP(string)
 
+def tensor_to_regex(regex_tensor):
+    word_index = {'pad': 0, '0': 1, '1': 2, '(': 3, ')': 4, '?': 5, '*': 6, '|': 7,
+                  'X': 8, '#': 9}
+    inverse_word_index = {v: k for k, v in word_index.items()}
+
+    regex = ''
+
+    for i in range(regex_tensor.shape[1]):
+        index = inverse_word_index[regex_tensor[0, i].item()]
+
+        if index == 'pad':
+            break
+
+        regex += str(index)
+
+    return regex
 
 def gen_str():
     str_list = []

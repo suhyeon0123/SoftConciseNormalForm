@@ -12,6 +12,16 @@ from util import *
 from DQN import*
 from parsetree import *
 import configparser
+import argparse
+
+
+parser = argparse.ArgumentParser()
+parser.add_argument("-e", "--examples", type=int,
+                    help="Example number")
+parser.add_argument("-u", "--unambiguous", help="Set ambiguity",
+                    action="store_true")
+parser.add_argument("-p", "--prioritized", help="Use prioritized replay buffer", action="store_true")
+args = parser.parse_args()
 
 
 config = configparser.ConfigParser()
@@ -41,6 +51,7 @@ class ReplayBuffer(object):
 
     def push(self, *args):
         self.buffer.append(Transition(*args))
+        #print(tensor_to_regex(args[0]), args[3][0][0].item(), tensor_to_regex(args[4]), args[5], args[6])
 
     def sample(self, batch_size):
         return random.sample(self.buffer, batch_size)
@@ -53,6 +64,52 @@ class ReplayBuffer(object):
         sample_output = [buffer[idx] for idx in sample_idxs]
         sample_output = np.reshape(sample_output, (batch_size, -1))
         return sample_output
+
+    def __len__(self):
+        return len(self.buffer)
+
+class NaivePrioritizedBuffer(object):
+    def __init__(self, capacity, prob_alpha=0.6):
+        self.prob_alpha = prob_alpha
+        self.capacity = capacity
+        self.buffer = []
+        self.pos = 0
+        self.priorities = np.zeros((capacity,), dtype=np.float32)
+
+    def push(self, *args):
+        max_prio = self.priorities.max() if self.buffer else 1.0
+
+        if len(self.buffer) < self.capacity:
+            self.buffer.append(Transition(*args))
+        else:
+            self.buffer[self.pos] = Transition(*args)
+
+        self.priorities[self.pos] = max_prio
+        self.pos = (self.pos + 1) % self.capacity
+
+    def sample(self, batch_size, beta=0.4):
+        if len(self.buffer) == self.capacity:
+            prios = self.priorities
+        else:
+            prios = self.priorities[:self.pos]
+
+        probs = prios ** self.prob_alpha
+        probs /= probs.sum()
+
+        indices = np.random.choice(len(self.buffer), batch_size, p=probs)
+        samples = [self.buffer[idx] for idx in indices]
+
+        total = len(self.buffer)
+        weights = (total * probs[indices]) ** (-beta)
+        weights /= weights.max()
+        weights = np.array(weights, dtype=np.float32)
+
+
+        return samples, indices, weights
+
+    def update_priorities(self, batch_indices, batch_priorities):
+        for idx, prio in zip(batch_indices, batch_priorities):
+            self.priorities[idx] = prio
 
     def __len__(self):
         return len(self.buffer)
@@ -76,19 +133,23 @@ embed_n = 500
 
 policy_net = DQN().to(device)
 
-policy_net.load_state_dict(torch.load('saved_model/DQN.pth'))
+#policy_net.load_state_dict(torch.load('saved_model/DQN.pth'))
 
 target_net = DQN().to(device)
 target_net.load_state_dict(policy_net.state_dict())
 target_net.eval()
 
 #optimizer = optim.RMSprop(policy_net.parameters())
-optimizer = optim.Adam(policy_net.parameters(), lr=0.0001)
+optimizer = optim.Adam(policy_net.parameters(), lr=0.001)
 
 REPLAY_INITIAL = 10000
 REPALY_MEMORY_SIZE = 1000000
 
-memory = ReplayBuffer(REPALY_MEMORY_SIZE)
+
+if args.prioritized:
+    memory = NaivePrioritizedBuffer(REPALY_MEMORY_SIZE)
+else:
+    memory = ReplayBuffer(REPALY_MEMORY_SIZE)
 
 
 steps_done = 0
@@ -115,10 +176,18 @@ def select_action(regex_tensor, pos_tensor, neg_tensor):
 
 #-----------------------------------
 
-def optimize_model():
+beta_start = 0.4
+beta_frames = 100000
+beta_by_frame = lambda frame_idx: min(1.0, beta_start + frame_idx * (1.0 - beta_start) / beta_frames)
+
+def optimize_model(beta=0.4):
     if len(memory) < REPLAY_INITIAL:
         return torch.FloatTensor([0])
-    transitions = memory.sample(BATCH_SIZE)
+
+    if args.prioritized:
+        transitions, indices, weights = memory.sample(BATCH_SIZE, beta)
+    else:
+        transitions = memory.sample(BATCH_SIZE)
     # Transpose the batch (see https://stackoverflow.com/a/19343/3343043 for
     # detailed explanation). 이것은 batch-array의 Transitions을 Transition의 batch-arrays로
     # 전환합니다.
@@ -147,8 +216,23 @@ def optimize_model():
     # 기대 Q 값 계산
     expected_state_action_values = (next_state_values * GAMMA) * (1 - done_batch) + reward_batch
 
-    # Huber 손실 계산
-    loss = F.smooth_l1_loss(state_action_values, expected_state_action_values.unsqueeze(1))
+    if args.prioritized:
+        loss = (state_action_values.squeeze(1) - expected_state_action_values).pow(2) * torch.FloatTensor(weights).to(
+            device).detach()
+        prios = loss + 1e-5
+        loss = loss.mean()
+    else:
+        # Huber 손실 계산
+        loss = F.smooth_l1_loss(state_action_values, expected_state_action_values.unsqueeze(1).detach())
+
+
+
+    # 모델 최적화
+    optimizer.zero_grad()
+    loss.backward()
+
+    if args.prioritized:
+        memory.update_priorities(indices, prios.data.cpu().numpy())
 
     # 모델 최적화
     optimizer.zero_grad()
@@ -182,7 +266,7 @@ def make_next_state(state, action, examples):
 
     if len(repr(copied_state)) > LENGTH_LIMIT or not spread_success:
         done = True
-        reward = -1
+        reward = -100
         return copied_state, reward, done, success
 
     #if repr(copied_state) in scanned:
@@ -194,13 +278,13 @@ def make_next_state(state, action, examples):
         #print("pd",state)
         #print(examples.getPos())
         done = True
-        reward = -1
+        reward = -100
         return copied_state, reward, done, success
 
     if is_ndead(copied_state, examples):
         #print("nd",state)
         done = True
-        reward = -1
+        reward = -100
         return copied_state, reward, done, success
 
     #if is_redundant(copied_state, examples):
@@ -216,12 +300,12 @@ def make_next_state(state, action, examples):
             end = time.time()
             print("Spent computation time:", end - start)
             print("Found solution: ", copied_state, "Solution length: ", len(repr(copied_state)))
-            reward = 100 * (LENGTH_LIMIT + 10 - len(repr(copied_state)))
+            reward = 100 * (LENGTH_LIMIT + 5 - len(repr(copied_state)))
         else:
-            reward = 0
+            reward = -100
     else:
         done = False
-        reward = 0
+        reward = -10
 
     return copied_state, reward, done, success
 
@@ -285,7 +369,7 @@ finished = False
 success = False
 
 
-num_episodes = 1000
+num_episodes = 100000
 
 i = 0
 
@@ -293,6 +377,7 @@ start = time.time()
 
 loss = 0
 reward_sum = 0
+reward_num = 0
 traversed = 0
 
 for i_episode in range(num_episodes):
@@ -325,6 +410,7 @@ for i_episode in range(num_episodes):
 
         for t in range(5):
             chosen_action = select_action(*make_embeded(state, examples))
+            #print(chosen_action)
 
             buffer = cost
 
@@ -348,14 +434,14 @@ for i_episode in range(num_episodes):
                     scanned.add(repr(k))
 
                 if is_pdead(k, examples):
-                    memory.push(*make_embeded(state, examples), chosen_action, make_embeded(k, examples)[0],
-                                torch.FloatTensor([-1]).to(device), False)
+                    memory.push(*make_embeded(state, examples), torch.LongTensor([[j]]).to(device), make_embeded(k, examples)[0],
+                                torch.FloatTensor([-100]).to(device), True)
                     # print(repr(k), "is pdead")
                     continue
 
                 if is_ndead(k, examples):
-                    memory.push(*make_embeded(state, examples), chosen_action, make_embeded(k, examples)[0],
-                                torch.FloatTensor([-1]).to(device), False)
+                    memory.push(*make_embeded(state, examples), torch.LongTensor([[j]]).to(device), make_embeded(k, examples)[0],
+                                torch.FloatTensor([-100]).to(device), True)
                     # print(repr(k), "is ndead")
                     continue
 
@@ -374,6 +460,8 @@ for i_episode in range(num_episodes):
                         print("Result RE:", repr(k))
 
                         next_state, reward, done, success = make_next_state(state, j, examples)
+                        reward_sum += reward
+                        reward_num += 1
                         memory.push(*make_embeded(state, examples), torch.LongTensor([[j]]).to(device),
                                     make_embeded(next_state, examples)[0],
                                     torch.FloatTensor([reward]).to(device), done)
@@ -381,8 +469,14 @@ for i_episode in range(num_episodes):
                         success = True
                         break
                     else:
-                        memory.push(*make_embeded(state, examples), chosen_action, make_embeded(k, examples)[0],
-                                    torch.FloatTensor([-1]).to(device), False)
+                        memory.push(*make_embeded(state, examples), torch.LongTensor([[j]]).to(device), make_embeded(k, examples)[0],
+                                    torch.FloatTensor([-100]).to(device), True)
+                else:
+                    next_state, reward, done, success = make_next_state(state, j, examples)
+                    reward_sum += reward
+                    reward_num += 1
+                    memory.push(*make_embeded(state, examples), torch.LongTensor([[j]]).to(device), make_embeded(next_state, examples)[0],
+                                torch.FloatTensor([reward]).to(device), done)
 
 
                 if j != chosen_action[0][0].item():
@@ -394,26 +488,24 @@ for i_episode in range(num_episodes):
                 break
             else:
                 next_state, reward, done, success = make_next_state(state, chosen_action, examples)
-                reward_sum += reward
-                memory.push(*make_embeded(state, examples), chosen_action, make_embeded(next_state, examples)[0],
-                            torch.FloatTensor([reward]).to(device), done)
 
             cost = buffer
             state = next_state
 
+            loss = optimize_model()
             if i % 100 == 0:
-                loss = optimize_model()
-                print("Episode:", i_episode, "\tIteration:", i, "\tCost:", cost, "\tScanned REs:", len(scanned), "\tQueue Size:", w.qsize(), "\tLoss:", format(loss.item(), '.7f'), "\tAvg Reward:", reward_sum / 100)
+                print("Episode:", i_episode, "\tIteration:", i, "\tCost:", cost, "\tScanned REs:", len(scanned), "\tQueue Size:", w.qsize(), "\tLoss:", format(loss.item(), '.7f'), "\tAvg Reward:", reward_sum / reward_num)
                 reward_sum = 0
+                reward_num = 0
 
             i = i + 1
 
             if done:
                 break
 
-    if i_episode % TARGET_UPDATE == 0:
-        torch.save(policy_net.state_dict(), 'saved_model/DQN.pth')
-        target_net.load_state_dict(policy_net.state_dict())
+    #if i_episode % TARGET_UPDATE == 0:
+    #    torch.save(policy_net.state_dict(), 'saved_model/DQN.pth')
+    #    target_net.load_state_dict(policy_net.state_dict())
 
 
 
