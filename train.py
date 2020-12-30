@@ -266,8 +266,9 @@ traversed = 0
 
 for i_episode in range(num_episodes):
 
-    #example_num = random.randint(1, 26)
-    examples = Examples(2)
+    example_num = random.randint(1, 26)
+    examples = Examples(random.randint(1, 26))
+    #examples = Examples(2)
     #examples = rand_example()
 
     w.put((RE().cost, RE()))

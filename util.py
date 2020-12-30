@@ -240,10 +240,9 @@ def is_ndead(s, examples):
     return False
 
 def is_redundant(s, examples):
-
     #unroll
-    # if there is #|# - infinite loop..
-    '''if '#|#' in repr(s):
+    '''# if there is #|# - infinite loop..
+    if '#|#' in repr(s):
         unrolled_state = copy.deepcopy(s)
     elif type(s.r) == type(KleenStar()):
         unrolled_state = copy.deepcopy(s)
@@ -290,8 +289,10 @@ def is_redundant(s, examples):
         else:
             t.spreadAll()
             next.append(t)
-
-
+    #print(unrolled_state)
+    #unrolled_state.spreadAll()
+    #print(unrolled_state)
+    #next = [unrolled_state]
 
     #check part
     for state in next:

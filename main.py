@@ -11,7 +11,6 @@ parser.add_argument("-e", "--examples", type=int,
                     help="Example number")
 parser.add_argument("-u", "--unambiguous", help="Set ambiguity",
                     action="store_true")
-parser.add_argument("-r", "--redundant", help="Set redundancy checker", action="store_true")
 args = parser.parse_args()
 
 
@@ -31,8 +30,8 @@ w = PriorityQueue()
 
 scanned = set()
 
-w.put((RE().cost, RE()))
-examples = Examples(args.examples)
+w.put((int(config['HOLE_COST']), RE()))
+examples = Examples(14)
 answer = examples.getAnswer()
 
 print(examples.getPos(), examples.getNeg())
@@ -52,7 +51,9 @@ while not w.empty() and not finished:
 
     prevCost = cost
 
-    if s.hasHole():
+    hasHole = s.hasHole()
+
+    if hasHole :
 
         for j, new_elem in enumerate([Character('0'), Character('1'), Or(), Concatenate(), KleenStar(), Question()]):
 
@@ -71,6 +72,7 @@ while not w.empty() and not finished:
             else:
                 scanned.add(repr(k))
 
+
             if is_pdead(k, examples):
                 #print(repr(k), "is pdead")
                 continue
@@ -79,10 +81,9 @@ while not w.empty() and not finished:
                 #print(repr(k), "is ndead")
                 continue
 
-            if args.redundant:
-                if is_redundant(k,examples):
-                    #print(repr(k), "is redundant")
-                    continue
+            if is_redundant(k,examples):
+                #print(repr(k), "is redundant")
+                continue
 
             if not k.hasHole():
                 if is_solution(repr(k), examples, membership):
@@ -95,7 +96,14 @@ while not w.empty() and not finished:
                     break
 
 
-            w.put((k.cost, k))
+            if j<2:
+                w.put((cost - int(config['HOLE_COST']) + int(config['SYMBOL_COST']), k))
+            elif j==2: # Union
+                w.put((cost + int(config['HOLE_COST']) + int(config['UNION_COST']) , k))
+            elif j==3: # Concatenation
+                w.put((cost + int(config['HOLE_COST']) + int(config['CONCAT_COST']) , k))
+            else: # Kleene Star
+                w.put((cost + int(config['CLOSURE_COST']) , k))
 
 
 

@@ -1,10 +1,29 @@
 #Regular Expression Implementation ,Written by Adrian Stoll
 import copy
 import configparser
+import random
 
 config = configparser.ConfigParser()
 config.read('config.ini')
 config = config['default']
+
+def get_rand_re():
+    case = random.randrange(0,7)
+    if case == 0:
+        return Character('0')
+    elif case == 1:
+        return Character('1')
+    elif case == 2:
+        return Or()
+    elif case == 3:
+        return Concatenate()
+    elif case == 4:
+        return KleenStar()
+    elif case == 5 :
+        return Question()
+    else:
+        return Hole()
+
 
 class Hole:
     def __init__(self):
@@ -17,12 +36,20 @@ class Hole:
         return False
     def spreadAll(self):
         return KleenStar(Or(Character('0'), Character('1')))
+    def spreadRand(self):
+        x = random.randrange(0,2)
+        if x == 0:
+            return Character('0')
+        else:
+            return Character('1')
     def spreadNp(self):
         return Character('@emptyset')
     def unroll(self):
         return
     def split(self, side):
         return False
+    def make_child(self):
+        return
 
 
 
@@ -72,7 +99,9 @@ class RE:
             self.r = KleenStar(Or(Character('0'), Character('1')))
         else:
             self.r.spreadAll()
-
+    def spreadRand(self):
+        self.string = None
+        self.r.spreadRand()
     def spreadNp(self):
         self.string = None
         if type(self.r) == type((Hole())):
@@ -90,6 +119,11 @@ class RE:
     def split(self, side):
         self.r.split(side)
         self.string = None
+    def make_child(self):
+        if type(self.r) == type((Hole())):
+            self.r = get_rand_re()
+        else:
+            self.r.make_child()
 
 
 class Epsilon(RE):
@@ -103,12 +137,18 @@ class Epsilon(RE):
         return False
     def spreadAll(self):
         return
+    def spreadRand(self):
+        return
     def spreadNp(self):
         return
     def unroll(self):
         return
     def split(self, side):
         return False
+
+    def make_child(self):
+        return
+
 
 
 class EpsilonBlank(RE):
@@ -122,12 +162,16 @@ class EpsilonBlank(RE):
         return False
     def spreadAll(self):
         return
+    def spreadRand(self):
+        return
     def spreadNp(self):
         return
     def unroll(self):
         return
     def split(self, side):
         return False
+    def make_child(self):
+        return
 
 
 class Character(RE):
@@ -142,12 +186,16 @@ class Character(RE):
         return False
     def spreadAll(self):
         return self.c
+    def spreadRand(self):
+        return
     def spreadNp(self):
         return self.c
     def unroll(self):
         return
     def split(self, side):
         return False
+    def make_child(self):
+        return
 
 
 class KleenStar(RE):
@@ -202,7 +250,16 @@ class KleenStar(RE):
             self.r = Or(Character('0'), Character('1'))
         else:
             self.r.spreadAll()
-
+    def spreadRand(self):
+        self.string = None
+        if type(self.r) == type((Hole())):
+            x = random.randrange(0, 2)
+            if x == 0:
+                self.r =  Character('0')
+            else:
+                self.r = Character('1')
+        else:
+            self.r.spreadRand()
     def spreadNp(self):
         self.string = None
 
@@ -232,6 +289,15 @@ class KleenStar(RE):
                     self.r = copy.deepcopy(self.r.b)
                 return True
         return self.r.split(side)
+    def make_child(self):
+        if type(self.r) == type((Hole())):
+            while True:
+                x = get_rand_re()
+                if type(x) != type(KleenStar()):
+                    self.r = x
+                    break
+        else:
+            self.r.make_child()
 
 
 class Question(RE):
@@ -287,6 +353,17 @@ class Question(RE):
         else:
             self.r.spreadAll()
 
+    def spreadRand(self):
+        self.string = None
+        if type(self.r) == type((Hole())):
+            x = random.randrange(0, 2)
+            if x == 0:
+                self.r =  Character('0')
+            else:
+                self.r = Character('1')
+        else:
+            self.r.spreadRand()
+
     def spreadNp(self):
         self.string = None
 
@@ -310,6 +387,15 @@ class Question(RE):
                 self.r = copy.deepcopy(self.r.b)
                 return True
         return self.r.split(side)
+    def make_child(self):
+        if type(self.r) == type((Hole())) :
+            while True:
+                x = get_rand_re()
+                if type(x) != type(Question()) or type(x) != type(KleenStar()):
+                    self.r = x
+                    break
+        else:
+            self.r.make_child()
 
 
 class Concatenate(RE):
@@ -380,6 +466,25 @@ class Concatenate(RE):
         else:
             self.b.spreadAll()
 
+    def spreadRand(self):
+        self.string = None
+        if type(self.a) == type((Hole())):
+            x = random.randrange(0, 2)
+            if x == 0:
+                self.a =  Character('0')
+            else:
+                self.a = Character('1')
+        else:
+            self.a.spreadRand()
+        if type(self.b) == type((Hole())):
+            x = random.randrange(0, 2)
+            if x == 0:
+                self.b =  Character('0')
+            else:
+                self.b = Character('1')
+        else:
+            self.b.spreadRand()
+
     def spreadNp(self):
         self.string = None
         if type(self.a)==type((Hole())):
@@ -394,7 +499,7 @@ class Concatenate(RE):
 
     def unroll(self):
         self.string = None
-        if type(self.a) == type(KleenStar()) and type(self.a.r) != type(Hole()):
+        if type(self.a) == type(KleenStar()) and not self.a.hasHole():
             s = copy.deepcopy(self.a.r)
             self.a = Concatenate(Concatenate(s, s), KleenStar(s))
 
@@ -404,7 +509,7 @@ class Concatenate(RE):
         else:
             self.a.unroll()
 
-        if type(self.b) == type(KleenStar()) and type(self.b.r) != type(Hole()):
+        if type(self.b) == type(KleenStar()) and not self.b.hasHole():
             s = copy.deepcopy(self.b.r)
             self.b = Concatenate(Concatenate(s, s), KleenStar(s))
 
@@ -413,6 +518,7 @@ class Concatenate(RE):
 
         else:
             self.b.unroll()
+
 
     def split(self, side):
         self.string = None
@@ -437,6 +543,16 @@ class Concatenate(RE):
             return True
         else:
             return self.b.split(side)
+    def make_child(self):
+        if type(self.a) == type((Hole())):
+            self.a = get_rand_re()
+        else:
+            self.a.make_child()
+
+        if type(self.b) == type((Hole())):
+            self.b = get_rand_re()
+        else:
+            self.b.make_child()
 
 
 class Or(RE):
@@ -505,6 +621,25 @@ class Or(RE):
         else:
             self.b.spreadAll()
 
+    def spreadRand(self):
+        self.string = None
+        if type(self.a) == type((Hole())):
+            x = random.randrange(0, 2)
+            if x == 0:
+                self.a =  Character('0')
+            else:
+                self.a = Character('1')
+        else:
+            self.a.spreadRand()
+        if type(self.b) == type((Hole())):
+            x = random.randrange(0, 2)
+            if x == 0:
+                self.b =  Character('0')
+            else:
+                self.b = Character('1')
+        else:
+            self.b.spreadRand()
+
     def spreadNp(self):
         self.string = None
 
@@ -523,13 +658,21 @@ class Or(RE):
             s = copy.deepcopy(self.a.r)
             self.a = Concatenate(Concatenate(s, s), KleenStar(s))
 
+            self.a.a.unroll()
+            self.a.b.unroll()
+
+        else:
+            self.a.unroll()
+
         if type(self.b) == type(KleenStar()) and not self.b.hasHole():
             s = copy.deepcopy(self.b.r)
-            self.a = Concatenate(Concatenate(s, s), KleenStar(s))
+            self.b = Concatenate(Concatenate(s, s), KleenStar(s))
 
+            self.b.a.unroll()
+            self.b.b.unroll()
 
-        self.a.unroll()
-        self.b.unroll()
+        else:
+            self.b.unroll()
 
 
     def split(self, side):
@@ -555,5 +698,16 @@ class Or(RE):
             return True
         else:
             return self.b.split(side)
+    def make_child(self):
+        if type(self.a) == type((Hole())):
+            self.a = get_rand_re()
+        else:
+            self.a.make_child()
+
+        if type(self.b) == type((Hole())):
+            self.b = get_rand_re()
+        else:
+            self.b.make_child()
+
 
 
