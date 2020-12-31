@@ -1,9 +1,7 @@
 from queue import PriorityQueue
-import time
-import configparser
 from util import *
 import argparse
-from DQN import*
+from models import*
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-e", "--examples", type=int,

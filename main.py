@@ -1,7 +1,4 @@
 from queue import PriorityQueue
-import time
-from examples import Examples
-import configparser
 from util import *
 import argparse
 
