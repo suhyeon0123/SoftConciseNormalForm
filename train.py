@@ -266,10 +266,11 @@ traversed = 0
 
 for i_episode in range(num_episodes):
 
-    example_num = random.randint(1, 26)
-    examples = Examples(random.randint(1, 26))
+    #example_num = random.randint(1, 26)
+    #examples = Examples(random.randint(1, 26))
     #examples = Examples(2)
     #examples = rand_example()
+    examples = rand_example(10)
 
     w.put((RE().cost, RE()))
 
@@ -281,8 +282,6 @@ for i_episode in range(num_episodes):
             scanned.clear()
             i = 0
             break
-            w.put((RE().cost, RE()))
-            print("Restart")
 
         tmp = w.get()
         state = tmp[1]
@@ -343,7 +342,7 @@ for i_episode in range(num_episodes):
                               w.qsize(), "\tTraversed:", traversed)
                         # print("Result RE:", repr(k), "Verified by FAdo:", is_solution(repr(k), examples, membership2))
                         print("Result RE:", repr(k))
-
+                        x = 1
                         next_state, reward, done, success = make_next_state(state, j, examples)
                         reward_sum += reward
                         reward_num += 1
@@ -357,6 +356,7 @@ for i_episode in range(num_episodes):
                         memory.push(*make_embeded(state, examples), torch.LongTensor([[j]]).to(device), make_embeded(k, examples)[0],
                                     torch.FloatTensor([-100]).to(device), True)
                 else:
+                    x = 0
                     next_state, reward, done, success = make_next_state(state, j, examples)
                     reward_sum += reward
                     reward_num += 1

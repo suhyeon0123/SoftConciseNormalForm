@@ -7,6 +7,8 @@ from parsetree import *
 from examples import Examples
 from FAdo.cfg import *
 from xeger import Xeger
+from parsetree import*
+from examples import *
 import time
 from torch.nn.utils.rnn import pad_sequence
 import torch
@@ -44,7 +46,7 @@ def tensor_to_regex(regex_tensor):
 def gen_str():
     str_list = []
 
-    for i in range(random.randrange(1,7)):
+    for i in range(random.randrange(1,10)):
         if random.randrange(1,3) == 1:
             str_list.append('0')
         else:
@@ -81,15 +83,14 @@ def make_next_state(state, action, examples):
     #    reward = -1
     #    return copied_state, reward, done, success
 
+    # 항상 374line
     if is_pdead(copied_state, examples):
-        #print("pd",state)
         #print(examples.getPos())
         done = True
         reward = -100
         return copied_state, reward, done, success
 
     if is_ndead(copied_state, examples):
-        #print("nd",state)
         done = True
         reward = -100
         return copied_state, reward, done, success
@@ -165,7 +166,6 @@ def make_embeded(state,examples):
 def rand_example():
     gen = reStringRGenerator(['0', '1'], random.randrange(3, 15), eps=None)
     regex = gen.generate().replace('+', '|')
-    print(regex)
 
     x = Xeger(limit=10)
     pos_size = 10
@@ -221,7 +221,6 @@ def is_pdead(s, examples):
     for string in examples.getPos():
         if not membership(s, string):
             return True
-
     return False
 
 def is_ndead(s, examples):
@@ -236,7 +235,6 @@ def is_ndead(s, examples):
     for string in examples.getNeg():
         if membership(s, string):
             return True
-
     return False
 
 def is_redundant(s, examples):
@@ -267,19 +265,24 @@ def is_redundant(s, examples):
     prev = [unrolled_state]
     next = []
 
+    count = 0
     while prev:
-
+        count +=1
+        if count >=20:
+            break
         t = prev.pop()
-
         if '|' in repr(t):
+
+            s_left = copy.deepcopy(t)
+            s_right = t
 
             if type(t.r) == type(Or()):
                 s_left = RE(t.r.a)
                 s_right = RE(t.r.b)
             else:
-                s_left = copy.deepcopy(t)
+                #s_left = copy.deepcopy(t)
                 s_left.split(0)
-                s_right = t
+                #s_right = t
                 s_right.split(1)
 
             #deepcopy problem
@@ -303,4 +306,32 @@ def is_redundant(s, examples):
         if count == 0:
             return True
     return False
+
+
+def rand_example(limit):
+    x = Xeger()
+    regex = RE()
+    for count in range(limit):
+        regex.make_child()
+    regex.spreadRand()
+    regex = repr(regex)
+    print(regex)
+    pos_size = 5
+    pos_example = list()
+    for i in range(pos_size):
+        tmp=x.xeger(regex)
+        if len(tmp) <= 15:
+            pos_example.append(tmp)
+
+    neg_example = list()
+    for i in range(1000):
+        random_str = gen_str()
+        if random_str:
+            neg_example.append(random_str)
+            if len(neg_example) == 5:
+                break
+    examples = Examples(1)
+    examples.setPos(pos_example)
+    examples.setNeg(neg_example)
+    return examples
 

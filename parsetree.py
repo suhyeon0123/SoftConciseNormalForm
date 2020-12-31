@@ -13,13 +13,13 @@ def get_rand_re():
         return Character('0')
     elif case == 1:
         return Character('1')
-    elif case == 2:
+    elif case <= 2:
         return Or()
-    elif case == 3:
+    elif case <= 3:
         return Concatenate()
-    elif case == 4:
+    elif case <= 4:
         return KleenStar()
-    elif case == 5 :
+    elif case <= 5 :
         return Question()
     else:
         return Hole()
@@ -293,7 +293,7 @@ class KleenStar(RE):
         if type(self.r) == type((Hole())):
             while True:
                 x = get_rand_re()
-                if type(x) != type(KleenStar()):
+                if type(x) != type(KleenStar()) and type(x) != type(Question()):
                     self.r = x
                     break
         else:
@@ -391,7 +391,7 @@ class Question(RE):
         if type(self.r) == type((Hole())) :
             while True:
                 x = get_rand_re()
-                if type(x) != type(Question()) or type(x) != type(KleenStar()):
+                if type(x) != type(Question()) and type(x) != type(KleenStar()):
                     self.r = x
                     break
         else:
