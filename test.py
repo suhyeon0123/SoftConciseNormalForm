@@ -20,8 +20,8 @@ args = parser.parse_args()
 def select_action(regex_tensor, pos_tensor, neg_tensor):
     with torch.no_grad():
         #print(regex_tensor, pos_tensor)
-        a = policy_net(regex_tensor, pos_tensor, neg_tensor) #(1,6)
-        print(tensor_to_regex(regex_tensor), "\t\t", torch.argmax(a).view(-1,1)[0][0].item())
+        a = policy_net(regex_tensor.view(1,-1), pos_tensor.view(1,-1), neg_tensor.view(1,-1)) #(1,6)
+        print(tensor_to_regex(regex_tensor.view(1,-1)), "\t\t", torch.argmax(a).view(-1,1)[0][0].item())
         #return torch.tensor([[random.randrange(n_actions)]], device=device, dtype=torch.long)
     return torch.argmax(a).view(-1,1)
 
@@ -48,8 +48,8 @@ embed_n = 500
 
 policy_net = DQN().to(device)
 
-#policy_net.load_state_dict(torch.load('saved_model/DQN.pth'))
-policy_net.load_state_dict(torch.load('saved_model/PrioritizedDQN.pth'))
+policy_net.load_state_dict(torch.load('saved_model/DQN.pth'))
+#policy_net.load_state_dict(torch.load('saved_model/PrioritizedDQN.pth'))
 policy_net.eval()
 
 sys.setrecursionlimit(5000000)
@@ -124,10 +124,10 @@ while not w.empty() and not success:
                 # print(repr(k), "is ndead")
                 continue
 
-            # if args.redundant:
-            #    if is_redundant(k, examples):
-            #        # print(repr(k), "is redundant")
-            #        continue
+            if args.redundant:
+                if is_redundant(k, examples):
+                    # print(repr(k), "is redundant")
+                    continue
 
             if not k.hasHole():
                 if is_solution(repr(k), examples, membership):

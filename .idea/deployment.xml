@@ -5,7 +5,7 @@
       <paths name="ksk@knutoc.asuscomm.com:9000">
         <serverdata>
           <mappings>
-            <mapping deploy="/tmp/pycharm_project_570" local="$PROJECT_DIR$" />
+            <mapping deploy="/home/ksk/Experiments/RegexGeneration/SynthesizingRegularExpression" local="$PROJECT_DIR$" />
           </mappings>
         </serverdata>
       </paths>

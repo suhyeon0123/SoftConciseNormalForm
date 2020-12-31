@@ -120,7 +120,7 @@ class NaivePrioritizedBuffer(object):
 BATCH_SIZE = 32
 GAMMA = 0.999
 EPS_START = 1
-EPS_END = 0.01
+EPS_END = 0.05
 EPS_DECAY = 50000
 TARGET_UPDATE = 1
 
@@ -139,11 +139,11 @@ target_net = DQN().to(device)
 target_net.load_state_dict(policy_net.state_dict())
 target_net.eval()
 
-#optimizer = optim.RMSprop(policy_net.parameters())
-optimizer = optim.Adam(policy_net.parameters(), lr=0.001)
+optimizer = optim.RMSprop(policy_net.parameters(), lr=0.00025)
+#optimizer = optim.Adam(policy_net.parameters(), lr=0.001)
 
 REPLAY_INITIAL = 10000
-REPALY_MEMORY_SIZE = 1000000
+REPALY_MEMORY_SIZE = 50000
 
 
 if args.prioritized:
@@ -266,9 +266,9 @@ traversed = 0
 
 for i_episode in range(num_episodes):
 
-    example_num = random.randint(1, 26)
-    examples = Examples(random.randint(1, 26))
-    #examples = Examples(2)
+    #example_num = random.randint(1, 26)
+    #examples = Examples(random.randint(1, 26))
+    examples = Examples(2)
     #examples = rand_example()
 
     w.put((RE().cost, RE()))
