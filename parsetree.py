@@ -81,7 +81,7 @@ class RE:
         elif type(case) == type(Or()):
             self.cost += int(config['HOLE_COST']) + int(config['UNION_COST'])
         elif type(case) == type(KleenStar()) or type(case) == type(Question()):
-            self.cost += int(config['HOLE_COST']) + int(config['CLOSURE_COST'])
+            self.cost += int(config['CLOSURE_COST'])
         else:
             self.cost += -int(config['HOLE_COST']) + int(config['SYMBOL_COST'])
 
