@@ -1,15 +1,10 @@
-#import gym
 from queue import PriorityQueue
 import math
-import random
 import numpy as np
 from collections import namedtuple
-
-import time
-import torch
 import torch.optim as optim
 from util import *
-from DQN import*
+from models import *
 from parsetree import *
 import configparser
 import argparse
@@ -23,23 +18,19 @@ parser.add_argument("-u", "--unambiguous", help="Set ambiguity",
 parser.add_argument("-p", "--prioritized", help="Use prioritized replay buffer", action="store_true")
 args = parser.parse_args()
 
-
 config = configparser.ConfigParser()
 config.read('config.ini')
 config = config['default']
 
-
 # GPU를 사용할 경우
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-#device = 'cpu'
+# device = 'cpu'
 
-#---------------------------
+# ---------------------------
 
 
 Transition = namedtuple('Transition',
                         ('state', 'pos_example', 'neg_example', 'action', 'next_state', 'reward', 'done'))
-
-
 
 from collections import deque
 
@@ -51,7 +42,7 @@ class ReplayBuffer(object):
 
     def push(self, *args):
         self.buffer.append(Transition(*args))
-        #print(tensor_to_regex(args[0]), args[3][0][0].item(), tensor_to_regex(args[4]), args[5], args[6])
+        # print(tensor_to_regex(args[0]), args[3][0][0].item(), tensor_to_regex(args[4]), args[5], args[6])
 
     def sample(self, batch_size):
         return random.sample(self.buffer, batch_size)
@@ -67,6 +58,7 @@ class ReplayBuffer(object):
 
     def __len__(self):
         return len(self.buffer)
+
 
 class NaivePrioritizedBuffer(object):
     def __init__(self, capacity, prob_alpha=0.6):
@@ -104,7 +96,6 @@ class NaivePrioritizedBuffer(object):
         weights /= weights.max()
         weights = np.array(weights, dtype=np.float32)
 
-
         return samples, indices, weights
 
     def update_priorities(self, batch_indices, batch_priorities):
@@ -115,7 +106,7 @@ class NaivePrioritizedBuffer(object):
         return len(self.buffer)
 
 
-#----------------------
+# ----------------------
 
 BATCH_SIZE = 32
 GAMMA = 0.999
@@ -131,54 +122,52 @@ EXAMPLE_LENGHT_LIMIT = 100
 n_actions = 6
 embed_n = 500
 
-policy_net = DQN().to(device)
+policy_net = DuelingDQN().to(device)
 
-#policy_net.load_state_dict(torch.load('saved_model/DQN.pth'))
+# policy_net.load_state_dict(torch.load('saved_model/DQN.pth'))
 
-target_net = DQN().to(device)
+target_net = DuelingDQN().to(device)
 target_net.load_state_dict(policy_net.state_dict())
 target_net.eval()
 
 optimizer = optim.RMSprop(policy_net.parameters(), lr=0.00025)
-#optimizer = optim.Adam(policy_net.parameters(), lr=0.001)
+# optimizer = optim.Adam(policy_net.parameters(), lr=0.001)
 
 REPLAY_INITIAL = 10000
 REPALY_MEMORY_SIZE = 50000
-
 
 if args.prioritized:
     memory = NaivePrioritizedBuffer(REPALY_MEMORY_SIZE)
 else:
     memory = ReplayBuffer(REPALY_MEMORY_SIZE)
 
-
 steps_done = 0
 
 scanned = set()
 
 
-
-#-----------------------------------
+# -----------------------------------
 
 def select_action(regex_tensor, pos_tensor, neg_tensor):
     global steps_done
     sample = random.random()
     eps_threshold = EPS_END + (EPS_START - EPS_END) * \
-        math.exp(-1. * steps_done / EPS_DECAY)
+                    math.exp(-1. * steps_done / EPS_DECAY)
     steps_done += 1
     if sample > eps_threshold:
         with torch.no_grad():
-            a = policy_net(regex_tensor.view(1,-1), pos_tensor.view(1,-1), neg_tensor.view(1,-1)) #(1,6)
-            return torch.argmax(a).view(-1,1)
+            a = policy_net(regex_tensor.view(1, -1), pos_tensor.view(1, -1), neg_tensor.view(1, -1))  # (1,6)
+            return torch.argmax(a).view(-1, 1)
     else:
         return torch.tensor([[random.randrange(n_actions)]], device=device, dtype=torch.long)
 
 
-#-----------------------------------
+# -----------------------------------
 
 beta_start = 0.4
 beta_frames = 100000
 beta_by_frame = lambda frame_idx: min(1.0, beta_start + frame_idx * (1.0 - beta_start) / beta_frames)
+
 
 def optimize_model(beta=0.4):
     if len(memory) < REPLAY_INITIAL:
@@ -193,7 +182,6 @@ def optimize_model(beta=0.4):
     # 전환합니다.
     batch = Transition(*zip(*transitions))
 
-
     state_batch = pad_sequence(batch.state, batch_first=True)
     pos_example_batch = pad_sequence(batch.pos_example, batch_first=True)
     neg_example_batch = pad_sequence(batch.neg_example, batch_first=True)
@@ -202,23 +190,23 @@ def optimize_model(beta=0.4):
     done_batch = torch.FloatTensor(batch.done).to(device)
     next_state_batch = pad_sequence(batch.next_state, batch_first=True)
 
-
     # Q(s_t, a) 계산 - 모델이 Q(s_t)를 계산하고, 취한 행동의 열을 선택합니다.
     # 이들은 policy_net에 따라 각 배치 상태에 대해 선택된 행동입니다.
-    state_action_values = policy_net(state_batch, pos_example_batch, neg_example_batch).view(-1,6).gather(1, action_batch)
-
-
+    state_action_values = policy_net(state_batch, pos_example_batch, neg_example_batch).view(-1, 6).gather(1,
+                                                                                                           action_batch)
 
     # 모든 다음 상태를 위한 V(s_{t+1}) 계산
     # non_final_next_states의 행동들에 대한 기대값은 "이전" target_net을 기반으로 계산됩니다.
     # max(1)[0]으로 최고의 보상을 선택하십시오.
     # 이것은 마스크를 기반으로 병합되어 기대 상태 값을 갖거나 상태가 최종인 경우 0을 갖습니다.
-    next_state_values = target_net(next_state_batch, pos_example_batch,neg_example_batch ).view(-1,6).max(1)[0].detach()
+    next_state_values = target_net(next_state_batch, pos_example_batch, neg_example_batch).view(-1, 6).max(1)[
+        0].detach()
     # 기대 Q 값 계산
     expected_state_action_values = (next_state_values * GAMMA) * (1 - done_batch) + reward_batch
 
     if args.prioritized:
-        loss = (state_action_values.squeeze(1) - expected_state_action_values.detach()).pow(2) * torch.FloatTensor(weights).to(
+        loss = (state_action_values.squeeze(1) - expected_state_action_values.detach()).pow(2) * torch.FloatTensor(
+            weights).to(
             device).detach()
         prios = loss + 1e-5
         loss = loss.mean()
@@ -239,19 +227,12 @@ def optimize_model(beta=0.4):
     return loss
 
 
-
-
-
-
 w = PriorityQueue()
 
 scanned = set()
 
-
-
 finished = False
 success = False
-
 
 num_episodes = 100000
 
@@ -266,10 +247,10 @@ traversed = 0
 
 for i_episode in range(num_episodes):
 
-    #example_num = random.randint(1, 26)
-    #examples = Examples(random.randint(1, 26))
+    # example_num = random.randint(1, 26)
+    # examples = Examples(random.randint(1, 26))
     examples = Examples(2)
-    #examples = rand_example()
+    # examples = rand_example()
 
     w.put((RE().cost, RE()))
 
@@ -295,7 +276,7 @@ for i_episode in range(num_episodes):
 
         for t in range(5):
             chosen_action = select_action(*make_embeded(state, examples))
-            #print(chosen_action)
+            # print(chosen_action)
 
             buffer = cost
 
@@ -319,18 +300,20 @@ for i_episode in range(num_episodes):
                     scanned.add(repr(k))
 
                 if is_pdead(k, examples):
-                    memory.push(*make_embeded(state, examples), torch.LongTensor([[j]]).to(device), make_embeded(k, examples)[0],
+                    memory.push(*make_embeded(state, examples), torch.LongTensor([[j]]).to(device),
+                                make_embeded(k, examples)[0],
                                 torch.FloatTensor([-100]).to(device), True)
                     # print(repr(k), "is pdead")
                     continue
 
                 if is_ndead(k, examples):
-                    memory.push(*make_embeded(state, examples), torch.LongTensor([[j]]).to(device), make_embeded(k, examples)[0],
+                    memory.push(*make_embeded(state, examples), torch.LongTensor([[j]]).to(device),
+                                make_embeded(k, examples)[0],
                                 torch.FloatTensor([-100]).to(device), True)
                     # print(repr(k), "is ndead")
                     continue
 
-                #if args.redundant:
+                # if args.redundant:
                 #    if is_redundant(k, examples):
                 #        # print(repr(k), "is redundant")
                 #        continue
@@ -354,15 +337,16 @@ for i_episode in range(num_episodes):
                         success = True
                         break
                     else:
-                        memory.push(*make_embeded(state, examples), torch.LongTensor([[j]]).to(device), make_embeded(k, examples)[0],
+                        memory.push(*make_embeded(state, examples), torch.LongTensor([[j]]).to(device),
+                                    make_embeded(k, examples)[0],
                                     torch.FloatTensor([-100]).to(device), True)
                 else:
                     next_state, reward, done, success = make_next_state(state, j, examples)
                     reward_sum += reward
                     reward_num += 1
-                    memory.push(*make_embeded(state, examples), torch.LongTensor([[j]]).to(device), make_embeded(next_state, examples)[0],
+                    memory.push(*make_embeded(state, examples), torch.LongTensor([[j]]).to(device),
+                                make_embeded(next_state, examples)[0],
                                 torch.FloatTensor([reward]).to(device), done)
-
 
                 if j != chosen_action[0][0].item():
                     w.put((k.cost, k))
@@ -383,7 +367,9 @@ for i_episode in range(num_episodes):
                 loss = optimize_model()
 
             if i % 100 == 0:
-                print("Episode:", i_episode, "\tIteration:", i, "\tCost:", cost, "\tScanned REs:", len(scanned), "\tQueue Size:", w.qsize(), "\tLoss:", format(loss.item(), '.7f'), "\tAvg Reward:", reward_sum / reward_num)
+                print("Episode:", i_episode, "\tIteration:", i, "\tCost:", cost, "\tScanned REs:", len(scanned),
+                      "\tQueue Size:", w.qsize(), "\tLoss:", format(loss.item(), '.7f'), "\tAvg Reward:",
+                      reward_sum / reward_num)
                 reward_sum = 0
                 reward_num = 0
 
@@ -399,11 +385,4 @@ for i_episode in range(num_episodes):
             torch.save(policy_net.state_dict(), 'saved_model/DQN.pth')
         target_net.load_state_dict(policy_net.state_dict())
 
-
-
-
 print('Complete')
-
-
-
-
