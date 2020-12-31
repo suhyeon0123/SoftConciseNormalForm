@@ -104,7 +104,8 @@ def make_next_state(state, action, examples):
         done = True
         if is_solution(repr(copied_state), examples, membership):
             success = True
-            reward = 100 * (LENGTH_LIMIT + 5 - len(repr(copied_state)))
+            #reward = 100 * (LENGTH_LIMIT + 5 - len(repr(copied_state)))
+            reward = 100
         else:
             reward = -100
     else:
