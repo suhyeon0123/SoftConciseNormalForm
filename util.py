@@ -312,7 +312,7 @@ def rand_example(limit):
     x = Xeger()
     regex = RE()
     for count in range(limit):
-        regex.make_child()
+        regex.make_child(count)
     regex.spreadRand()
     regex = repr(regex)
     print(regex)
@@ -326,7 +326,7 @@ def rand_example(limit):
     neg_example = list()
     for i in range(1000):
         random_str = gen_str()
-        if random_str:
+        if not membership(regex, random_str):
             neg_example.append(random_str)
             if len(neg_example) == 5:
                 break
@@ -335,3 +335,6 @@ def rand_example(limit):
     examples.setNeg(neg_example)
     return examples
 
+examples = rand_example(10)
+print(examples.getPos())
+print(examples.getNeg())

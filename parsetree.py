@@ -7,22 +7,32 @@ config = configparser.ConfigParser()
 config.read('config.ini')
 config = config['default']
 
-def get_rand_re():
-    case = random.randrange(0,7)
-    if case == 0:
-        return Character('0')
-    elif case == 1:
-        return Character('1')
-    elif case <= 2:
-        return Or()
-    elif case <= 3:
-        return Concatenate()
-    elif case <= 4:
-        return KleenStar()
-    elif case <= 5 :
-        return Question()
+def get_rand_re(depth):
+
+    case = random.randrange(0,2+depth)
+    if case <= 2:
+        cha = False
     else:
-        return Hole()
+        cha = True
+
+    if cha :
+        case = random.randrange(0,2)
+        if case == 0:
+            return Character('0')
+        else:
+            return Character('1')
+    else :
+        case = random.randrange(0,5)
+        if case <= 0:
+            return Or()
+        elif case <= 1:
+            return Concatenate()
+        elif case <= 2:
+            return KleenStar()
+        elif case <= 3:
+            return Question()
+        else:
+            return Hole()
 
 
 class Hole:
@@ -119,11 +129,11 @@ class RE:
     def split(self, side):
         self.r.split(side)
         self.string = None
-    def make_child(self):
+    def make_child(self, count):
         if type(self.r) == type((Hole())):
-            self.r = get_rand_re()
+            self.r = get_rand_re(count)
         else:
-            self.r.make_child()
+            self.r.make_child(count)
 
 
 class Epsilon(RE):
@@ -146,7 +156,7 @@ class Epsilon(RE):
     def split(self, side):
         return False
 
-    def make_child(self):
+    def make_child(self, count):
         return
 
 
@@ -170,7 +180,7 @@ class EpsilonBlank(RE):
         return
     def split(self, side):
         return False
-    def make_child(self):
+    def make_child(self, count):
         return
 
 
@@ -194,7 +204,7 @@ class Character(RE):
         return
     def split(self, side):
         return False
-    def make_child(self):
+    def make_child(self, count):
         return
 
 
@@ -289,15 +299,15 @@ class KleenStar(RE):
                     self.r = copy.deepcopy(self.r.b)
                 return True
         return self.r.split(side)
-    def make_child(self):
+    def make_child(self, count):
         if type(self.r) == type((Hole())):
             while True:
-                x = get_rand_re()
+                x = get_rand_re(count)
                 if type(x) != type(KleenStar()) and type(x) != type(Question()):
                     self.r = x
                     break
         else:
-            self.r.make_child()
+            self.r.make_child(count)
 
 
 class Question(RE):
@@ -387,15 +397,15 @@ class Question(RE):
                 self.r = copy.deepcopy(self.r.b)
                 return True
         return self.r.split(side)
-    def make_child(self):
+    def make_child(self, count):
         if type(self.r) == type((Hole())) :
             while True:
-                x = get_rand_re()
+                x = get_rand_re(count)
                 if type(x) != type(Question()) and type(x) != type(KleenStar()):
                     self.r = x
                     break
         else:
-            self.r.make_child()
+            self.r.make_child(count)
 
 
 class Concatenate(RE):
@@ -543,16 +553,16 @@ class Concatenate(RE):
             return True
         else:
             return self.b.split(side)
-    def make_child(self):
+    def make_child(self, count):
         if type(self.a) == type((Hole())):
-            self.a = get_rand_re()
+            self.a = get_rand_re(count)
         else:
-            self.a.make_child()
+            self.a.make_child(count)
 
         if type(self.b) == type((Hole())):
-            self.b = get_rand_re()
+            self.b = get_rand_re(count)
         else:
-            self.b.make_child()
+            self.b.make_child(count)
 
 
 class Or(RE):
@@ -698,16 +708,16 @@ class Or(RE):
             return True
         else:
             return self.b.split(side)
-    def make_child(self):
+    def make_child(self, count):
         if type(self.a) == type((Hole())):
-            self.a = get_rand_re()
+            self.a = get_rand_re(count)
         else:
-            self.a.make_child()
+            self.a.make_child(count)
 
         if type(self.b) == type((Hole())):
-            self.b = get_rand_re()
+            self.b = get_rand_re(count)
         else:
-            self.b.make_child()
+            self.b.make_child(count)
 
 
 
