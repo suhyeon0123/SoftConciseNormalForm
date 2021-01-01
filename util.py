@@ -2,13 +2,10 @@ from FAdo.reex import *
 from FAdo.fa import *
 # from FAdo.fio import *
 import re2 as re
-from parsetree import *
 
-from examples import Examples
 from FAdo.cfg import *
 from xeger import Xeger
 from parsetree import*
-from examples import *
 import time
 from torch.nn.utils.rnn import pad_sequence
 import torch
@@ -43,16 +40,6 @@ def tensor_to_regex(regex_tensor):
 
     return regex
 
-def gen_str():
-    str_list = []
-
-    for i in range(random.randrange(1,10)):
-        if random.randrange(1,3) == 1:
-            str_list.append('0')
-        else:
-            str_list.append('1')
-
-    return ''.join(str_list)
 
 def make_next_state(state, action, examples):
 
@@ -163,35 +150,6 @@ def make_embeded(state,examples):
 
     return regex_tensor, pos_example_tensor, neg_example_tensor
 
-def rand_example():
-    gen = reStringRGenerator(['0', '1'], random.randrange(3, 15), eps=None)
-    regex = gen.generate().replace('+', '|')
-
-    x = Xeger(limit=10)
-    pos_size = 10
-    pos_example = list()
-    for i in range(1000):
-        randStr = x.xeger(regex)
-        if len(randStr) <= 7 and randStr not in pos_example:
-            pos_example.append(randStr)
-            if len(pos_example) == 10:
-                break
-
-    neg_example = list()
-    for i in range(1000):
-        random_str = gen_str()
-        if not membership(regex, random_str) and random_str not in neg_example:
-            neg_example.append(random_str)
-            if len(neg_example) == 10:
-                break
-
-    examples = Examples(1)
-    examples.setPos(pos_example)
-    examples.setNeg(neg_example)
-
-    print(examples.getPos(), examples.getNeg())
-
-    return examples
 
 
 def is_solution(regex, examples, membership):
@@ -239,16 +197,6 @@ def is_ndead(s, examples):
 
 def is_redundant(s, examples):
     #unroll
-    '''# if there is #|# - infinite loop..
-    if '#|#' in repr(s):
-        unrolled_state = copy.deepcopy(s)
-    elif type(s.r) == type(KleenStar()):
-        unrolled_state = copy.deepcopy(s)
-        unrolled_state.unroll_entire()
-    else:
-        unrolled_state = copy.deepcopy(s)
-        unrolled_state.unroll()'''
-
 
     if type(s.r) == type(KleenStar()):
         unrolled_state = copy.deepcopy(s)
@@ -308,33 +256,6 @@ def is_redundant(s, examples):
     return False
 
 
-def rand_example(limit):
-    x = Xeger()
-    regex = RE()
-    for count in range(limit):
-        regex.make_child(count)
-    regex.spreadRand()
-    regex = repr(regex)
-    print(regex)
-    pos_size = 5
-    pos_example = list()
-    for i in range(pos_size):
-        tmp=x.xeger(regex)
-        if len(tmp) <= 15:
-            pos_example.append(tmp)
 
-    neg_example = list()
-    for i in range(1000):
-        random_str = gen_str()
-        if not membership(regex, random_str):
-            neg_example.append(random_str)
-            if len(neg_example) == 5:
-                break
-    examples = Examples(1)
-    examples.setPos(pos_example)
-    examples.setNeg(neg_example)
-    return examples
 
-examples = rand_example(10)
-print(examples.getPos())
-print(examples.getNeg())
+

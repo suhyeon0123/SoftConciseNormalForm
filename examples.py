@@ -1,28 +1,61 @@
 import fnmatch
-import glob
 import os
+from xeger import Xeger
+from parsetree import*
+from util import membership
 
 
 class Examples(object):
-    def __init__(self, no):
-        self.pos_simple, self.neg_simple, self.answer = self.readFromFile(no)
+
+    def __init__(self, benchmark, no = 1):
+        self.benchmark = benchmark
+        self.limit = 10
         self.pos = list()
         self.neg = list()
-        self.make_examples(self.pos_simple, True)
-        self.make_examples(self.neg_simple, False)
+
+        if benchmark:
+            self.pos_simple, self.neg_simple, self.answer = self.readFromFile(no)
+            self.convertX(self.pos_simple, True)
+            self.convertX(self.neg_simple, False)
+        else:
+            self.rand_example(self.limit)
+
+    def rand_example(self, limit):
+        x = Xeger()
+        regex = RE()
+        for count in range(limit):
+            regex.make_child(count)
+        regex.spreadRand()
+        regex = repr(regex)
+        self.answer = regex
+        print(self.answer)
+
+        pos_size = 5
+        self.pos = list()
+        for i in range(pos_size):
+            tmp = x.xeger(regex)
+            if len(tmp) <= 15:
+                self.pos.append(tmp)
+
+        neg_size = 5
+        for i in range(1000):
+            random_str = self.gen_str()
+            if not membership(regex, random_str):
+                self.neg.append(random_str)
+                if len(self.neg) == neg_size:
+                    break
 
 
-    def setPos(self, pos):
-        self.pos = pos
+    def gen_str(self):
+        str_list = []
 
-    def setNeg(self, neg):
-        self.neg = neg
+        for i in range(random.randrange(1, 10)):
+            if random.randrange(1, 3) == 1:
+                str_list.append('0')
+            else:
+                str_list.append('1')
 
-    def addPos(self, example):
-        self.pos.append(example)
-
-    def addNeg(self, example):
-        self.neg.append(example)
+        return ''.join(str_list)
 
     def getPos(self):
         return self.pos
@@ -61,7 +94,7 @@ class Examples(object):
 
         return pos, neg, description.strip()
 
-    def make_examples(self, simple, is_pos):
+    def convertX(self, simple, is_pos):
 
         for i in simple:
             if 'X' in i:
@@ -78,3 +111,9 @@ class Examples(object):
             self.pos.append(i)
         else:
             self.neg.append(i)
+
+
+examples = Examples(benchmark=False)
+print(examples.getAnswer())
+print(examples.getPos())
+print(examples.getNeg())

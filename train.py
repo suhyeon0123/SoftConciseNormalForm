@@ -9,6 +9,7 @@ from parsetree import *
 import configparser
 import argparse
 from torch.nn.utils.rnn import pad_sequence
+from examples import *
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-e", "--examples", type=int,
@@ -250,7 +251,7 @@ for i_episode in range(num_episodes):
 
     # example_num = random.randint(1, 26)
     # examples = Examples(random.randint(1, 26))
-    examples = Examples(2)
+    examples = Examples(True, 2)
     # examples = rand_example()
 
     w.put((RE().cost, RE()))

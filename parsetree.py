@@ -3,17 +3,20 @@ import copy
 import configparser
 import random
 
+
 config = configparser.ConfigParser()
 config.read('config.ini')
 config = config['default']
 
+
 def get_rand_re(depth):
 
     case = random.randrange(0,2+depth)
-    if case <= 2:
-        cha = False
-    else:
+
+    if case > 2:
         cha = True
+    else:
+        cha = False
 
     if cha :
         case = random.randrange(0,2)
@@ -47,11 +50,7 @@ class Hole:
     def spreadAll(self):
         return KleenStar(Or(Character('0'), Character('1')))
     def spreadRand(self):
-        x = random.randrange(0,2)
-        if x == 0:
-            return Character('0')
-        else:
-            return Character('1')
+        return Character('0') if random.random() <0.5 else Character('1')
     def spreadNp(self):
         return Character('@emptyset')
     def unroll(self):
@@ -155,7 +154,6 @@ class Epsilon(RE):
         return
     def split(self, side):
         return False
-
     def make_child(self, count):
         return
 
@@ -263,11 +261,7 @@ class KleenStar(RE):
     def spreadRand(self):
         self.string = None
         if type(self.r) == type((Hole())):
-            x = random.randrange(0, 2)
-            if x == 0:
-                self.r =  Character('0')
-            else:
-                self.r = Character('1')
+            self.r = Character('0') if random.random() <0.5 else Character('1')
         else:
             self.r.spreadRand()
     def spreadNp(self):
@@ -366,11 +360,7 @@ class Question(RE):
     def spreadRand(self):
         self.string = None
         if type(self.r) == type((Hole())):
-            x = random.randrange(0, 2)
-            if x == 0:
-                self.r =  Character('0')
-            else:
-                self.r = Character('1')
+            self.r = Character('0') if random.random() <0.5 else Character('1')
         else:
             self.r.spreadRand()
 
@@ -390,13 +380,11 @@ class Question(RE):
         self.string = None
 
         if type(self.r) == type(Or()):
-            if side == 0:
-                self.r = copy.deepcopy(self.r.a)
-                return True
-            else:
-                self.r = copy.deepcopy(self.r.b)
-                return True
+            self.r = copy.deepcopy(self.r.a) if side == 0 else copy.deepcopy(self.r.b)
+            return True
+
         return self.r.split(side)
+
     def make_child(self, count):
         if type(self.r) == type((Hole())) :
             while True:
@@ -479,19 +467,11 @@ class Concatenate(RE):
     def spreadRand(self):
         self.string = None
         if type(self.a) == type((Hole())):
-            x = random.randrange(0, 2)
-            if x == 0:
-                self.a =  Character('0')
-            else:
-                self.a = Character('1')
+            self.a = Character('0') if random.random() <0.5 else Character('1')
         else:
             self.a.spreadRand()
         if type(self.b) == type((Hole())):
-            x = random.randrange(0, 2)
-            if x == 0:
-                self.b =  Character('0')
-            else:
-                self.b = Character('1')
+            self.b = Character('0') if random.random() <0.5 else Character('1')
         else:
             self.b.spreadRand()
 
@@ -534,25 +514,19 @@ class Concatenate(RE):
         self.string = None
 
         if type(self.a) == type(Or()):
-            if side == 0:
-                self.a = copy.deepcopy(self.a.a)
-                return True
-            else:
-                self.a = copy.deepcopy(self.a.b)
-                return True
+            self.a = copy.deepcopy(self.a.a) if side == 0 else copy.deepcopy(self.a.b)
+            return True
+
 
         elif type(self.b) == type(Or()):
-            if side == 0:
-                self.b = copy.deepcopy(self.b.a)
-                return True
-            else:
-                self.b = copy.deepcopy(self.b.b)
-                return True
+            self.a = copy.deepcopy(self.b.a) if side == 0 else copy.deepcopy(self.b.b)
+            return True
 
         if self.a.split(side):
             return True
         else:
             return self.b.split(side)
+
     def make_child(self, count):
         if type(self.a) == type((Hole())):
             self.a = get_rand_re(count)
@@ -634,19 +608,11 @@ class Or(RE):
     def spreadRand(self):
         self.string = None
         if type(self.a) == type((Hole())):
-            x = random.randrange(0, 2)
-            if x == 0:
-                self.a =  Character('0')
-            else:
-                self.a = Character('1')
+            self.a = Character('0') if random.random() <0.5 else Character('1')
         else:
             self.a.spreadRand()
         if type(self.b) == type((Hole())):
-            x = random.randrange(0, 2)
-            if x == 0:
-                self.b =  Character('0')
-            else:
-                self.b = Character('1')
+            self.a = Character('0') if random.random() <0.5 else Character('1')
         else:
             self.b.spreadRand()
 
@@ -689,25 +655,18 @@ class Or(RE):
         self.string = None
 
         if type(self.a) == type(Or()):
-            if side == 0:
-                self.a = copy.deepcopy(self.a.a)
-                return True
-            else:
-                self.a = copy.deepcopy(self.a.b)
-                return True
+            self.a = copy.deepcopy(self.a.a) if side == 0 else copy.deepcopy(self.a.b)
+            return True
 
         elif type(self.b) == type(Or()):
-            if side == 0:
-                self.b = copy.deepcopy(self.b.a)
-                return True
-            else:
-                self.b = copy.deepcopy(self.b.b)
-                return True
+            self.a = copy.deepcopy(self.b.a) if side == 0 else copy.deepcopy(self.b.b)
+
 
         if self.a.split(side):
             return True
         else:
             return self.b.split(side)
+
     def make_child(self, count):
         if type(self.a) == type((Hole())):
             self.a = get_rand_re(count)

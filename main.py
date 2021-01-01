@@ -1,6 +1,7 @@
 from queue import PriorityQueue
 from util import *
 import argparse
+from examples import *
 
 
 parser = argparse.ArgumentParser()
@@ -25,7 +26,7 @@ w = PriorityQueue()
 scanned = set()
 
 w.put((RE().cost, RE()))
-examples = Examples(args.examples)
+examples = Examples(True,args.examples)
 answer = examples.getAnswer()
 
 print(examples.getPos(), examples.getNeg())
