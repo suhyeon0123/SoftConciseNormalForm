@@ -21,30 +21,38 @@ class Examples(object):
             self.rand_example(self.limit)
 
     def rand_example(self, limit):
-        x = Xeger()
-        regex = RE()
-        for count in range(limit):
-            regex.make_child(count)
-        regex.spreadRand()
-        regex = repr(regex)
-        self.answer = regex
-        print(self.answer)
+        while True:
+            self.pos = list()
+            self.neg = list()
+            x = Xeger()
+            regex = RE()
+            for count in range(limit):
+                regex.make_child(count)
+            regex.spreadRand()
+            regex = repr(regex)
+            self.answer = regex
 
-        pos_size = 5
-        self.pos = list()
-        for i in range(pos_size):
-            tmp = x.xeger(regex)
-            if len(tmp) <= 15:
-                self.pos.append(tmp)
+            pos_size = 8
+            for i in range(1000):
+                tmp = x.xeger(regex)
+                if len(tmp) <= 15:
+                    self.pos.append(tmp)
+                    if len(self.pos) == pos_size:
+                        break
+            if not len(self.pos) == pos_size:
+                continue
 
-        neg_size = 5
-        for i in range(1000):
-            random_str = self.gen_str()
-            if not membership(regex, random_str):
-                self.neg.append(random_str)
-                if len(self.neg) == neg_size:
-                    break
+            neg_size = 8
+            for i in range(1000):
+                random_str = self.gen_str()
+                if not membership(regex, random_str):
+                    self.neg.append(random_str)
+                    if len(self.neg) == neg_size:
+                        break
+            if not len(self.neg) == neg_size:
+                continue
 
+            break
 
     def gen_str(self):
         str_list = []
@@ -112,8 +120,3 @@ class Examples(object):
         else:
             self.neg.append(i)
 
-
-examples = Examples(benchmark=False)
-print(examples.getAnswer())
-print(examples.getPos())
-print(examples.getNeg())

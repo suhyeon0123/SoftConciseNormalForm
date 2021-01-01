@@ -221,16 +221,14 @@ def is_redundant(s, examples):
         t = prev.pop()
         if '|' in repr(t):
 
-            s_left = copy.deepcopy(t)
-            s_right = t
 
             if type(t.r) == type(Or()):
                 s_left = RE(t.r.a)
                 s_right = RE(t.r.b)
             else:
-                #s_left = copy.deepcopy(t)
+                s_left = copy.deepcopy(t)
                 s_left.split(0)
-                #s_right = t
+                s_right = t
                 s_right.split(1)
 
             #deepcopy problem
@@ -240,10 +238,7 @@ def is_redundant(s, examples):
         else:
             t.spreadAll()
             next.append(t)
-    #print(unrolled_state)
-    #unrolled_state.spreadAll()
-    #print(unrolled_state)
-    #next = [unrolled_state]
+
 
     #check part
     for state in next:
