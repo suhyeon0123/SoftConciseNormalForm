@@ -1,7 +1,4 @@
 from queue import PriorityQueue
-import time
-from examples import Examples
-import configparser
 from util import *
 import argparse
 
@@ -11,6 +8,8 @@ parser.add_argument("-e", "--examples", type=int,
                     help="Example number")
 parser.add_argument("-u", "--unambiguous", help="Set ambiguity",
                     action="store_true")
+parser.add_argument("-r", "--redundant", help="Set redundancy checker", action="store_true")
+
 args = parser.parse_args()
 
 
@@ -20,18 +19,13 @@ import faulthandler
 
 faulthandler.enable()
 
-config = configparser.ConfigParser()
-config.read('config.ini')
-config = config['default']
-
-
 
 w = PriorityQueue()
 
 scanned = set()
 
-w.put((int(config['HOLE_COST']), RE()))
-examples = Examples(5)
+w.put((RE().cost, RE()))
+examples = Examples(args.examples)
 answer = examples.getAnswer()
 
 print(examples.getPos(), examples.getNeg())
@@ -55,7 +49,7 @@ while not w.empty() and not finished:
 
     if hasHole :
 
-        for j, new_elem in enumerate([Character('0'), Character('1'), Or(), Concatenate(), KleenStar()]):
+        for j, new_elem in enumerate([Character('0'), Character('1'), Or(), Concatenate(), KleenStar(), Question()]):
 
             #print(repr(s), repr(new_elem))
 
@@ -74,15 +68,15 @@ while not w.empty() and not finished:
 
 
             if is_pdead(k, examples):
-                print(repr(k), "is pdead")
+                #print(repr(k), "is pdead")
                 continue
 
             if is_ndead(k, examples):
-                print(repr(k), "is ndead")
+                #print(repr(k), "is ndead")
                 continue
 
-            if is_redundant(k,examples):
-                print(repr(k), "is redundant")
+            if args.redundant and is_redundant(k,examples):
+                #print(repr(k), "is redundant")
                 continue
 
             if not k.hasHole():
@@ -96,16 +90,7 @@ while not w.empty() and not finished:
                     break
 
 
-            if j<2:
-                w.put((cost - int(config['HOLE_COST']) + int(config['SYMBOL_COST']), k))
-            elif j==2: # Union
-                w.put((cost + int(config['HOLE_COST']) + int(config['UNION_COST']) , k))
-            elif j==3: # Concatenation
-                w.put((cost + int(config['HOLE_COST']) + int(config['CONCAT_COST']) , k))
-            elif j == 4: # Kleene Star
-                w.put((cost + int(config['CLOSURE_COST']) , k))
-            '''else:
-                w.put((cost + int(config['Q_COST']), k))'''
+            w.put((k.cost, k))
 
 
     if i % 1000 == 0:

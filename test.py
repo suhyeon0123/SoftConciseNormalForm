@@ -1,9 +1,7 @@
 from queue import PriorityQueue
-import time
-import configparser
 from util import *
 import argparse
-from DQN import*
+from models import*
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-e", "--examples", type=int,
@@ -20,8 +18,8 @@ args = parser.parse_args()
 def select_action(regex_tensor, pos_tensor, neg_tensor):
     with torch.no_grad():
         #print(regex_tensor, pos_tensor)
-        a = policy_net(regex_tensor, pos_tensor, neg_tensor) #(1,6)
-        print(tensor_to_regex(regex_tensor), "\t\t", torch.argmax(a).view(-1,1)[0][0].item())
+        a = policy_net(regex_tensor.view(1,-1), pos_tensor.view(1,-1), neg_tensor.view(1,-1)) #(1,6)
+        print(tensor_to_regex(regex_tensor.view(1,-1)), "\t\t", torch.argmax(a).view(-1,1)[0][0].item())
         #return torch.tensor([[random.randrange(n_actions)]], device=device, dtype=torch.long)
     return torch.argmax(a).view(-1,1)
 
@@ -29,27 +27,14 @@ def select_action(regex_tensor, pos_tensor, neg_tensor):
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-
-BATCH_SIZE = 32
-GAMMA = 0.999
-EPS_START = 1.0
-EPS_END = 0.01
-EPS_DECAY = 50000
-TARGET_UPDATE = 1
-
 LENGTH_LIMIT = 30
 EXAMPLE_LENGHT_LIMIT = 100
-REPLAY_INITIAL = 10000
-REPALY_MEMORY_SIZE = 1000000
 
-# gym 행동 공간에서 행동의 숫자를 얻습니다.
-n_actions = 6
-embed_n = 500
 
-policy_net = DQN().to(device)
+policy_net = DuelingDQN().to(device)
 
 #policy_net.load_state_dict(torch.load('saved_model/DQN.pth'))
-policy_net.load_state_dict(torch.load('saved_model/PrioritizedDQN.pth'))
+policy_net.load_state_dict(torch.load('saved_model/Prioritized_DQN.pth'))
 policy_net.eval()
 
 sys.setrecursionlimit(5000000)
@@ -57,10 +42,6 @@ sys.setrecursionlimit(5000000)
 import faulthandler
 
 faulthandler.enable()
-
-config = configparser.ConfigParser()
-config.read('config.ini')
-config = config['default']
 
 
 
@@ -124,10 +105,10 @@ while not w.empty() and not success:
                 # print(repr(k), "is ndead")
                 continue
 
-            # if args.redundant:
-            #    if is_redundant(k, examples):
-            #        # print(repr(k), "is redundant")
-            #        continue
+            if args.redundant:
+                if is_redundant(k, examples):
+                    # print(repr(k), "is redundant")
+                    continue
 
             if not k.hasHole():
                 if is_solution(repr(k), examples, membership):
