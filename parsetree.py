@@ -278,7 +278,6 @@ class KleenStar(RE):
 
     def split(self, side):
         self.string = None
-        print("ttt")
         if type(self.r) == type(Or()):
             if side == 0:
                 if type(self.r.a) == type(KleenStar()):
@@ -386,7 +385,6 @@ class Question(RE):
 
     def split(self, side):
         self.string = None
-        print("Ddd")
         if type(self.r) == type(Or()):
             self.r = copy.deepcopy(self.r.a) if side == 0 else copy.deepcopy(self.r.b)
             return True
@@ -526,7 +524,6 @@ class Concatenate(RE):
 
     def split(self, side):
         self.string = None
-        print("ttt")
         if type(self.a) == type(Or()):
             self.a = copy.deepcopy(self.a.a) if side == 0 else copy.deepcopy(self.a.b)
             return True
