@@ -251,8 +251,10 @@ for i_episode in range(num_episodes):
 
     # example_num = random.randint(1, 26)
     # examples = Examples(random.randint(1, 26))
-    examples = Examples(True, 2)
-    # examples = rand_example()
+    #examples = Examples(True, 2)
+    examples = Examples(False)
+
+    print("Generate : ", examples.getAnswer())
 
     w.put((RE().cost, RE()))
 
@@ -327,7 +329,7 @@ for i_episode in range(num_episodes):
                         print("Iteration:", i, "\tCost:", cost, "\tScanned REs:", len(scanned), "\tQueue Size:",
                               w.qsize(), "\tEps.:", eps_threshold)
                         # print("Result RE:", repr(k), "Verified by FAdo:", is_solution(repr(k), examples, membership2))
-                        print("Result RE:", repr(k))
+                        print("Result RE:", repr(k), "\n")
 
                         next_state, reward, done, success = make_next_state(state, j, examples)
                         reward_sum += reward

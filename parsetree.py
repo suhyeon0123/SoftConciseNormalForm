@@ -278,7 +278,7 @@ class KleenStar(RE):
 
     def split(self, side):
         self.string = None
-
+        print("ttt")
         if type(self.r) == type(Or()):
             if side == 0:
                 if type(self.r.a) == type(KleenStar()):
@@ -292,6 +292,14 @@ class KleenStar(RE):
                 else:
                     self.r = copy.deepcopy(self.r.b)
                 return True
+        elif type(self.r) == type(Question()):
+            if side == 0:
+                self.r = copy.deepcopy(self.r.r.r)
+                return True
+            else:
+                self.r = Epsilon()
+                return True
+
         return self.r.split(side)
     def make_child(self, count):
         if type(self.r) == type((Hole())):
@@ -378,11 +386,17 @@ class Question(RE):
 
     def split(self, side):
         self.string = None
-
+        print("Ddd")
         if type(self.r) == type(Or()):
             self.r = copy.deepcopy(self.r.a) if side == 0 else copy.deepcopy(self.r.b)
             return True
-
+        elif type(self.r) == type(Question()):
+            if side == 0:
+                self.r = copy.deepcopy(self.r.r.r)
+                return True
+            else:
+                self.r = Epsilon()
+                return True
         return self.r.split(side)
 
     def make_child(self, count):
@@ -512,14 +526,18 @@ class Concatenate(RE):
 
     def split(self, side):
         self.string = None
-
+        print("ttt")
         if type(self.a) == type(Or()):
             self.a = copy.deepcopy(self.a.a) if side == 0 else copy.deepcopy(self.a.b)
             return True
-
-
+        elif type(self.a) == type(Question()):
+            self.a = copy.deepcopy(self.a.r) if side == 0 else Epsilon()
+            return True
         elif type(self.b) == type(Or()):
-            self.a = copy.deepcopy(self.b.a) if side == 0 else copy.deepcopy(self.b.b)
+            self.b = copy.deepcopy(self.b.a) if side == 0 else copy.deepcopy(self.b.b)
+            return True
+        elif type(self.b) == type(Question()):
+            self.b = copy.deepcopy(self.b.r) if side == 0 else Epsilon()
             return True
 
         if self.a.split(side):
@@ -652,20 +670,26 @@ class Or(RE):
 
 
     def split(self, side):
-        self.string = None
+        '''self.string = None
 
         if type(self.a) == type(Or()):
             self.a = copy.deepcopy(self.a.a) if side == 0 else copy.deepcopy(self.a.b)
             return True
-
+        elif type(self.a) == type(Question()):
+            self.a = copy.deepcopy(self.a.r) if side == 0 else Epsilon()
+            return True
         elif type(self.b) == type(Or()):
             self.a = copy.deepcopy(self.b.a) if side == 0 else copy.deepcopy(self.b.b)
+            return True
+        elif type(self.b) == type(Question()):
+                return True
 
 
         if self.a.split(side):
             return True
         else:
-            return self.b.split(side)
+            return self.b.split(side)'''
+        return
 
     def make_child(self, count):
         if type(self.a) == type((Hole())):
