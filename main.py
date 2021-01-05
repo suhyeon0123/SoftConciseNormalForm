@@ -56,9 +56,9 @@ while not w.empty() and not finished:
 
             k = copy.deepcopy(s)
 
-            if not k.spread(new_elem):
+            if not k.spread(new_elem, 10):
                 continue
-
+            #print("k=",k)
             traversed += 1
             if repr(k) in scanned:
                 # print("Already scanned?", repr(k))

@@ -5,7 +5,8 @@ import re2 as re
 
 from FAdo.cfg import *
 from xeger import Xeger
-from parsetree import*
+#from parsetree import*
+from parsetree_prune import*
 import time
 from torch.nn.utils.rnn import pad_sequence
 import torch
@@ -195,6 +196,7 @@ def is_ndead(s, examples):
             return True
     return False
 
+
 def is_redundant(s, examples):
     #unroll
 
@@ -225,6 +227,9 @@ def is_redundant(s, examples):
             if type(t.r) == type(Or()):
                 s_left = RE(t.r.a)
                 s_right = RE(t.r.b)
+            elif type(t.r) == type(Question()):
+                s_left = RE(t.r.r)
+                s_right = RE(Epsilon())
             else:
                 s_left = copy.deepcopy(t)
                 s_left.split(0)

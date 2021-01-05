@@ -1,7 +1,8 @@
 import fnmatch
 import os
 from xeger import Xeger
-from parsetree import*
+#from parsetree import*
+from parsetree_prune import*
 from util import membership
 
 
