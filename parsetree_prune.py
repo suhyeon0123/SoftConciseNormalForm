@@ -585,8 +585,11 @@ class Or(RE):
                 self.list.append(Hole())
                 return True
             elif type(re)==type((Hole())) and type(case)!=type(Question()) and not (parentId == 0 and type(case) == type(KleenStar())):
-                self.list[index] = case
-                return True
+                if repr(case) not in list(map(repr, self.list)):
+                    self.list[index] = case
+                    return True
+                else:
+                    return False
 
         for index, re in enumerate(self.list):
             if self.list[index].spread(case, 3):
@@ -601,6 +604,13 @@ class Or(RE):
             else:
                 self.list[index].spreadAll()
 
+    def spreadNp(self):
+        self.string = None
+        for index, re in enumerate(self.list):
+            if type(re) == type(Hole()):
+                self.list[index] = Character('@emptyset')
+            else:
+                self.list[index].spreadNp()
     def spreadRand(self):
         self.string = None
         if type(self.a) == type((Hole())):
@@ -612,13 +622,7 @@ class Or(RE):
         else:
             self.b.spreadRand()
 
-    def spreadNp(self):
-        self.string = None
-        for index, re in enumerate(self.list):
-            if type(re) == type(Hole()):
-                self.list[index] = Character('@emptyset')
-            else:
-                self.list[index].spreadNp()
+
 
 
     def unroll(self):
