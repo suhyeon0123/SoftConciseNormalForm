@@ -9,6 +9,7 @@ from parsetree import *
 import configparser
 import argparse
 from torch.nn.utils.rnn import pad_sequence
+from examples import *
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-e", "--examples", type=int,
@@ -130,11 +131,11 @@ target_net = DuelingDQN().to(device)
 target_net.load_state_dict(policy_net.state_dict())
 target_net.eval()
 
-optimizer = optim.RMSprop(policy_net.parameters(), lr=0.00025)
+optimizer = optim.RMSprop(policy_net.parameters(), lr=0.01)
 # optimizer = optim.Adam(policy_net.parameters(), lr=0.001)
 
 REPLAY_INITIAL = 10000
-REPALY_MEMORY_SIZE = 50000
+REPALY_MEMORY_SIZE = 100000
 
 if args.prioritized:
     memory = NaivePrioritizedBuffer(REPALY_MEMORY_SIZE)
@@ -145,11 +146,13 @@ steps_done = 0
 
 scanned = set()
 
+eps_threshold = 0
+
 
 # -----------------------------------
 
 def select_action(regex_tensor, pos_tensor, neg_tensor):
-    global steps_done
+    global steps_done, eps_threshold
     sample = random.random()
     eps_threshold = EPS_END + (EPS_START - EPS_END) * \
                     math.exp(-1. * steps_done / EPS_DECAY)
@@ -205,9 +208,7 @@ def optimize_model(beta=0.4):
     expected_state_action_values = (next_state_values * GAMMA) * (1 - done_batch) + reward_batch
 
     if args.prioritized:
-        loss = (state_action_values.squeeze(1) - expected_state_action_values.detach()).pow(2) * torch.FloatTensor(
-            weights).to(
-            device).detach()
+        loss = (state_action_values.squeeze(1) - expected_state_action_values.detach()).pow(2) * torch.FloatTensor(weights).to(device)
         prios = loss + 1e-5
         loss = loss.mean()
     else:
@@ -237,6 +238,7 @@ success = False
 num_episodes = 100000
 
 i = 0
+total_i = 0
 
 start = time.time()
 
@@ -249,8 +251,10 @@ for i_episode in range(num_episodes):
 
     # example_num = random.randint(1, 26)
     # examples = Examples(random.randint(1, 26))
-    examples = Examples(2)
-    # examples = rand_example()
+    #examples = Examples(True, 2)
+    examples = Examples(False)
+
+    print("Generate : ", examples.getAnswer())
 
     w.put((RE().cost, RE()))
 
@@ -323,9 +327,9 @@ for i_episode in range(num_episodes):
                         end = time.time()
                         print("Spent computation time:", end - start)
                         print("Iteration:", i, "\tCost:", cost, "\tScanned REs:", len(scanned), "\tQueue Size:",
-                              w.qsize(), "\tTraversed:", traversed)
+                              w.qsize(), "\tEps.:", eps_threshold)
                         # print("Result RE:", repr(k), "Verified by FAdo:", is_solution(repr(k), examples, membership2))
-                        print("Result RE:", repr(k))
+                        print("Result RE:", repr(k), "\n")
 
                         next_state, reward, done, success = make_next_state(state, j, examples)
                         reward_sum += reward
@@ -362,7 +366,7 @@ for i_episode in range(num_episodes):
             state = next_state
 
             if args.prioritized:
-                loss = optimize_model(beta_by_frame(i))
+                loss = optimize_model(beta_by_frame(total_i))
             else:
                 loss = optimize_model()
 
@@ -373,7 +377,8 @@ for i_episode in range(num_episodes):
                 reward_sum = 0
                 reward_num = 0
 
-            i = i + 1
+            i += 1
+            total_i += 1
 
             if done:
                 break

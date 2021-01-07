@@ -2,6 +2,7 @@ from queue import PriorityQueue
 from util import *
 import argparse
 from models import*
+from examples import *
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-e", "--examples", type=int,
@@ -27,27 +28,14 @@ def select_action(regex_tensor, pos_tensor, neg_tensor):
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-
-BATCH_SIZE = 32
-GAMMA = 0.999
-EPS_START = 1.0
-EPS_END = 0.01
-EPS_DECAY = 50000
-TARGET_UPDATE = 1
-
 LENGTH_LIMIT = 30
 EXAMPLE_LENGHT_LIMIT = 100
-REPLAY_INITIAL = 10000
-REPALY_MEMORY_SIZE = 1000000
 
-# gym 행동 공간에서 행동의 숫자를 얻습니다.
-n_actions = 6
-embed_n = 500
 
-policy_net = DQN().to(device)
+policy_net = DuelingDQN().to(device)
 
-policy_net.load_state_dict(torch.load('saved_model/DQN.pth'))
-#policy_net.load_state_dict(torch.load('saved_model/PrioritizedDQN.pth'))
+#policy_net.load_state_dict(torch.load('saved_model/DQN.pth'))
+policy_net.load_state_dict(torch.load('saved_model/Prioritized_DQN.pth'))
 policy_net.eval()
 
 sys.setrecursionlimit(5000000)
@@ -56,10 +44,6 @@ import faulthandler
 
 faulthandler.enable()
 
-config = configparser.ConfigParser()
-config.read('config.ini')
-config = config['default']
-
 
 
 w = PriorityQueue()
@@ -67,7 +51,7 @@ w = PriorityQueue()
 scanned = set()
 
 w.put((RE().cost, RE()))
-examples = Examples(args.examples)
+examples = Examples(True, args.examples)
 answer = examples.getAnswer()
 
 print(examples.getPos(), examples.getNeg())

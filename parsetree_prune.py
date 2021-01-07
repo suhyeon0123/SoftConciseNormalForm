@@ -45,7 +45,7 @@ class Hole:
         return '#'
     def hasHole(self):
         return True
-    def spread(self, case):
+    def spread(self, case, parentId):
         return False
     def spreadAll(self):
         return KleenStar(Or(Character('0'), Character('1')))
@@ -83,7 +83,7 @@ class RE:
         if not self.r.hasHole():
             self.hasHole2 = False
         return self.hasHole2
-    def spread(self, case):
+    def spread(self, case, parentId):
 
         if type(case) == type(Concatenate()):
             self.cost += int(config['HOLE_COST']) + int(config['CONCAT_COST'])
@@ -101,7 +101,7 @@ class RE:
             self.first = False
             return True
         else:
-            return self.r.spread(case)
+            return self.r.spread(case,10)
     def spreadAll(self):
         self.string = None
         if type(self.r) == type((Hole())):
@@ -142,7 +142,7 @@ class Epsilon(RE):
         return '@epsilon'
     def hasHole(self):
         return False
-    def spread(self, case):
+    def spread(self, case, parentId):
         return False
     def spreadAll(self):
         return
@@ -166,7 +166,7 @@ class EpsilonBlank(RE):
         return ''
     def hasHole(self):
         return False
-    def spread(self, case):
+    def spread(self, case, parentId):
         return False
     def spreadAll(self):
         return
@@ -190,7 +190,7 @@ class Character(RE):
         return self.c
     def hasHole(self):
         return False
-    def spread(self, case):
+    def spread(self, case, parentId):
         return False
     def spreadAll(self):
         return self.c
@@ -239,7 +239,7 @@ class KleenStar(RE):
             self.hasHole2 = False
         return self.hasHole2
 
-    def spread(self, case):
+    def spread(self, case, parentId):
         self.string = None
 
         if type(self.r)==type((Hole())):
@@ -249,7 +249,7 @@ class KleenStar(RE):
             else:
                 return False
 
-        return self.r.spread(case)
+        return self.r.spread(case,0)
 
     def spreadAll(self):
         self.string = None
@@ -336,7 +336,7 @@ class Question(RE):
             self.hasHole2 = False
         return self.hasHole2
 
-    def spread(self, case):
+    def spread(self, case, parentId):
         self.string = None
 
         if type(self.r)==type((Hole())):
@@ -346,7 +346,7 @@ class Question(RE):
             else:
                 return False
 
-        return self.r.spread(case)
+        return self.r.spread(case, 1)
 
     def spreadAll(self):
         self.string = None
@@ -430,7 +430,7 @@ class Concatenate(RE):
 
         return self.hasHole2
 
-    def spread(self, case):
+    def spread(self, case, parentId):
         self.string = None
 
         if type(self.a)==type((Hole())):
@@ -439,10 +439,10 @@ class Concatenate(RE):
         elif type(self.b)==type((Hole())):
             self.b = case
             return True
-        if self.a.spread(case):
+        if self.a.spread(case, 2):
             return True
         else:
-            return self.b.spread(case)
+            return self.b.spread(case, 2)
 
     def spreadAll(self):
         self.string = None
@@ -535,9 +535,15 @@ class Concatenate(RE):
             self.b.make_child(count)
 
 
+
 class Or(RE):
     def __init__(self, a=Hole(), b=Hole()):
-        self.a, self.b = a, b
+        self.set = set()
+        self.set.add(a)
+        self.set.add(b)
+        self.list = list()
+        self.list.append(a)
+        self.list.append(b)
         self.level = 3
         self.string = None
         self.hasHole2 = True
@@ -552,55 +558,59 @@ class Or(RE):
             else:
                 return '{}'.format(side)
 
-        if repr(self.a) == '@emptyset':
-            self.string = formatSide(self.b)
-            return self.string
-        elif repr(self.b) == '@emptyset':
-            self.string = formatSide(self.a)
-            return self.string
-
-        self.string = formatSide(self.a) + '|' + formatSide(self.b)
-        return self.string
+        str_list = []
+        for re in self.list:
+            if repr(re) != '@emptyset':
+                if str_list:
+                    str_list.append("|")
+                str_list.append(formatSide(re))
+        if not str_list:
+            return '@emptyset'
+        else:
+            return ''.join(str_list)
 
     def hasHole(self):
-
         if not self.hasHole2:
             return False
 
-        self.hasHole2 = self.a.hasHole() or self.b.hasHole()
-
+        self.hasHole2 = any(list(i.hasHole() for i in self.list))
         return self.hasHole2
 
-    def spread(self, case):
+
+    def spread(self, case, parentId):
         self.string = None
 
-        if type(self.a)==type((Hole())) and type(case)!=type(Question()):
-            self.a = case
-            return True
-        elif type(self.b)==type((Hole())) and type(case)!=type(Question()) :
-            if type(self.a) == type(Character('')) and type(case) == type(Character('')):
-                if self.a.c == case.c:
+        for index, re in enumerate(self.list):
+            if type(re) == type((Hole())) and type(case)==type(Or()):
+                self.list.append(Hole())
+                return True
+            elif type(re)==type((Hole())) and type(case)!=type(Question()) and not (parentId == 0 and type(case) == type(KleenStar())):
+                if repr(case) not in list(map(repr, self.list)):
+                    self.list[index] = case
+                    return True
+                else:
                     return False
-            self.b = case
-            return True
 
-        if self.a.spread(case):
-            return True
-        else:
-            return self.b.spread(case)
+        for index, re in enumerate(self.list):
+            if self.list[index].spread(case, 3):
+                return True
+        return False
 
     def spreadAll(self):
         self.string = None
+        for index, re in enumerate(self.list):
+            if type(re)==type(Hole()):
+                self.list[index] = KleenStar(Or(Character('0'), Character('1')))
+            else:
+                self.list[index].spreadAll()
 
-        if type(self.a)==type((Hole())):
-            self.a = KleenStar(Or(Character('0'), Character('1')))
-        else:
-            self.a.spreadAll()
-        if type(self.b)==type((Hole())):
-            self.b = KleenStar(Or(Character('0'), Character('1')))
-        else:
-            self.b.spreadAll()
-
+    def spreadNp(self):
+        self.string = None
+        for index, re in enumerate(self.list):
+            if type(re) == type(Hole()):
+                self.list[index] = Character('@emptyset')
+            else:
+                self.list[index].spreadNp()
     def spreadRand(self):
         self.string = None
         if type(self.a) == type((Hole())):
@@ -612,17 +622,8 @@ class Or(RE):
         else:
             self.b.spreadRand()
 
-    def spreadNp(self):
-        self.string = None
 
-        if type(self.a) == type((Hole())):
-            self.a = Character('@emptyset')
-        else:
-            self.a.spreadNp()
-        if type(self.b) == type((Hole())):
-            self.b = Character('@emptyset')
-        else:
-            self.b.spreadNp()
+
 
     def unroll(self):
         self.string = None

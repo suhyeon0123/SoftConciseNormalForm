@@ -2,11 +2,11 @@ from FAdo.reex import *
 from FAdo.fa import *
 # from FAdo.fio import *
 import re2 as re
-from parsetree import *
 
-from examples import Examples
 from FAdo.cfg import *
 from xeger import Xeger
+#from parsetree import*
+from parsetree_prune import*
 import time
 from torch.nn.utils.rnn import pad_sequence
 import torch
@@ -41,16 +41,6 @@ def tensor_to_regex(regex_tensor):
 
     return regex
 
-def gen_str():
-    str_list = []
-
-    for i in range(random.randrange(1,7)):
-        if random.randrange(1,3) == 1:
-            str_list.append('0')
-        else:
-            str_list.append('1')
-
-    return ''.join(str_list)
 
 def make_next_state(state, action, examples):
 
@@ -81,15 +71,14 @@ def make_next_state(state, action, examples):
     #    reward = -1
     #    return copied_state, reward, done, success
 
+    # 항상 374line
     if is_pdead(copied_state, examples):
-        #print("pd",state)
         #print(examples.getPos())
         done = True
         reward = -100
         return copied_state, reward, done, success
 
     if is_ndead(copied_state, examples):
-        #print("nd",state)
         done = True
         reward = -100
         return copied_state, reward, done, success
@@ -162,36 +151,6 @@ def make_embeded(state,examples):
 
     return regex_tensor, pos_example_tensor, neg_example_tensor
 
-def rand_example():
-    gen = reStringRGenerator(['0', '1'], random.randrange(3, 15), eps=None)
-    regex = gen.generate().replace('+', '|')
-    print(regex)
-
-    x = Xeger(limit=10)
-    pos_size = 10
-    pos_example = list()
-    for i in range(1000):
-        randStr = x.xeger(regex)
-        if len(randStr) <= 7 and randStr not in pos_example:
-            pos_example.append(randStr)
-            if len(pos_example) == 10:
-                break
-
-    neg_example = list()
-    for i in range(1000):
-        random_str = gen_str()
-        if not membership(regex, random_str) and random_str not in neg_example:
-            neg_example.append(random_str)
-            if len(neg_example) == 10:
-                break
-
-    examples = Examples(1)
-    examples.setPos(pos_example)
-    examples.setNeg(neg_example)
-
-    print(examples.getPos(), examples.getNeg())
-
-    return examples
 
 
 def is_solution(regex, examples, membership):
@@ -221,7 +180,6 @@ def is_pdead(s, examples):
     for string in examples.getPos():
         if not membership(s, string):
             return True
-
     return False
 
 def is_ndead(s, examples):
@@ -236,21 +194,11 @@ def is_ndead(s, examples):
     for string in examples.getNeg():
         if membership(s, string):
             return True
-
     return False
+
 
 def is_redundant(s, examples):
     #unroll
-    '''# if there is #|# - infinite loop..
-    if '#|#' in repr(s):
-        unrolled_state = copy.deepcopy(s)
-    elif type(s.r) == type(KleenStar()):
-        unrolled_state = copy.deepcopy(s)
-        unrolled_state.unroll_entire()
-    else:
-        unrolled_state = copy.deepcopy(s)
-        unrolled_state.unroll()'''
-
 
     if type(s.r) == type(KleenStar()):
         unrolled_state = copy.deepcopy(s)
@@ -267,15 +215,21 @@ def is_redundant(s, examples):
     prev = [unrolled_state]
     next = []
 
+    count = 0
     while prev:
-
+        count +=1
+        if count >=20:
+            break
         t = prev.pop()
-
         if '|' in repr(t):
+
 
             if type(t.r) == type(Or()):
                 s_left = RE(t.r.a)
                 s_right = RE(t.r.b)
+            elif type(t.r) == type(Question()):
+                s_left = RE(t.r.r)
+                s_right = RE(Epsilon())
             else:
                 s_left = copy.deepcopy(t)
                 s_left.split(0)
@@ -289,10 +243,7 @@ def is_redundant(s, examples):
         else:
             t.spreadAll()
             next.append(t)
-    #print(unrolled_state)
-    #unrolled_state.spreadAll()
-    #print(unrolled_state)
-    #next = [unrolled_state]
+
 
     #check part
     for state in next:
@@ -303,4 +254,8 @@ def is_redundant(s, examples):
         if count == 0:
             return True
     return False
+
+
+
+
 
