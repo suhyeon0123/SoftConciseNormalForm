@@ -10,7 +10,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class DQN(nn.Module):
 
-    def __init__(self, num_symbols=12, embedding_dim=4, hidden_dim=128, num_actions=6):
+    def __init__(self, num_symbols=12, embedding_dim=4, hidden_dim=128, num_actions=12):
         super(DQN, self).__init__()
 
         self.hidden_dim = hidden_dim
@@ -54,7 +54,7 @@ class DQN(nn.Module):
 
 class DuelingDQN(nn.Module):
 
-    def __init__(self, num_symbols=12, embedding_dim=4, hidden_dim=128, num_actions=6):
+    def __init__(self, num_symbols=12, embedding_dim=4, hidden_dim=128, num_actions=12):
         super(DuelingDQN, self).__init__()
 
         self.hidden_dim = hidden_dim

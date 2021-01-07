@@ -114,7 +114,7 @@ def make_next_state(state, action, examples):
     return copied_state, reward, done, success
 
 
-def make_embeded(state,examples):
+def make_embeded(state,examples, padding=False):
 
     pos_examples = examples.getPos()
     neg_examples = examples.getNeg()
@@ -128,14 +128,16 @@ def make_embeded(state,examples):
         except KeyError:
             encoded.append(100)
 
-    encoded += [0] * (LENGTH_LIMIT - len(encoded))
+    if padding:
+        encoded += [0] * (LENGTH_LIMIT - len(encoded))
 
     regex_tensor = torch.LongTensor(encoded)
 
     encoded = []
     for example in pos_examples:
-        if len(example) + len(encoded) > EXAMPLE_LENGHT_LIMIT:
-            break
+        if padding:
+            if len(example) + len(encoded) > EXAMPLE_LENGHT_LIMIT:
+                break
         for c in example:
             try:
                 encoded.append(word_index[c])
@@ -143,13 +145,16 @@ def make_embeded(state,examples):
                 encoded.append(100)
         encoded.append(10)
 
-    encoded += [0] * (EXAMPLE_LENGHT_LIMIT - len(encoded))
+    if padding:
+        encoded += [0] * (EXAMPLE_LENGHT_LIMIT - len(encoded))
+
     pos_example_tensor = torch.LongTensor(encoded)
 
     encoded = []
     for example in neg_examples:
-        if len(example) + len(encoded) > EXAMPLE_LENGHT_LIMIT:
-            break
+        if padding:
+            if len(example) + len(encoded) > EXAMPLE_LENGHT_LIMIT:
+                break
         for c in example:
             try:
                 encoded.append(word_index[c])
@@ -157,7 +162,9 @@ def make_embeded(state,examples):
                 encoded.append(100)
         encoded.append(10)
 
-    encoded += [0] * (EXAMPLE_LENGHT_LIMIT - len(encoded))
+    if padding:
+        encoded += [0] * (EXAMPLE_LENGHT_LIMIT - len(encoded))
+
     neg_example_tensor = torch.LongTensor(encoded)
 
     # print(regex_tensor.shape, pos_example_tensor.shape, neg_example_tensor.shape)

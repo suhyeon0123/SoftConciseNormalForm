@@ -1,11 +1,7 @@
 #Regular Expression Implementation ,Written by Adrian Stoll
 import copy
-import configparser
 import random
-
-config = configparser.ConfigParser()
-config.read('config.ini')
-config = config['default']
+from config import *
 
 def get_rand_re():
     case = random.randrange(0,7)
@@ -23,7 +19,6 @@ def get_rand_re():
         return Question()
     else:
         return Hole()
-
 
 class Hole:
     def __init__(self):
@@ -61,7 +56,7 @@ class RE:
         self.hasHole2 = True
         self.string = None
         self.first = True
-        self.cost = int(config['HOLE_COST'])
+        self.cost = HOLE_COST
 
     def __repr__(self):
         if not self.string:
@@ -77,13 +72,13 @@ class RE:
     def spread(self, case):
 
         if type(case) == type(Concatenate()):
-            self.cost += int(config['HOLE_COST']) + int(config['CONCAT_COST'])
+            self.cost += HOLE_COST + CONCAT_COST
         elif type(case) == type(Or()):
-            self.cost += int(config['HOLE_COST']) + int(config['UNION_COST'])
+            self.cost += HOLE_COST + UNION_COST
         elif type(case) == type(KleenStar()) or type(case) == type(Question()):
-            self.cost += int(config['CLOSURE_COST'])
+            self.cost += CLOSURE_COST
         else:
-            self.cost += -int(config['HOLE_COST']) + int(config['SYMBOL_COST'])
+            self.cost += - HOLE_COST + SYMBOL_COST
 
         self.string = None
 

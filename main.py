@@ -17,10 +17,6 @@ import faulthandler
 
 faulthandler.enable()
 
-config = configparser.ConfigParser()
-config.read('config.ini')
-config = config['default']
-
 
 
 w = PriorityQueue()

@@ -5,7 +5,7 @@ from datetime import datetime
 from game import *
 from examples import *
 from torch.nn.utils.rnn import pad_sequence
-
+from config import *
 
 import numpy as np
 
@@ -14,21 +14,6 @@ from kfac import KFACOptimizer
 import argparse
 
 
-NUM_PROCESSES = 16  # 동시 실행 환경 수
-NUM_ADVANCED_STEP = 5 # 총 보상을 계산할 때 Advantage 학습을 할 단계 수
-SHOW_ITER = 10
-
-# A2C 손실함수 계산에 사용되는 상수
-value_loss_coef = 0.5
-entropy_coef = 0.01
-policy_loss_coef = 1
-max_grad_norm = 0.5
-
-GAMMA = 0.9  # 시간할인율
-
-lr = 1e-3
-eps = 1e-5
-alpha = 0.99
 
 
 class RolloutStorage(object):
@@ -190,7 +175,7 @@ def train(args):
 
     # 초기 상태로부터 시작
 
-    obs1 = [torch.cat(make_embeded(envs[i].state(), envs[i].examples)) for i in range(NUM_PROCESSES)]
+    obs1 = [torch.cat(make_embeded(envs[i].state(), envs[i].examples, padding=True)) for i in range(NUM_PROCESSES)]
     # obs1 = [envs[i].map().state_for_player(1) for i in range(NUM_PROCESSES)]
     #obs1 = np.array(obs1)
     obs1 = torch.stack(obs1)
@@ -247,7 +232,7 @@ def train(args):
             masks = torch.FloatTensor([[0.0] if done_ else [1.0] for done_ in done_np])
 
             # current_obs를 업데이트
-            obs1 = [torch.cat(make_embeded(envs[i].state(), envs[i].examples)) for i in range(NUM_PROCESSES)]
+            obs1 = [torch.cat(make_embeded(envs[i].state(), envs[i].examples, padding=True)) for i in range(NUM_PROCESSES)]
             obs1 = torch.stack(obs1)
 
             # 메모리 객체에 현 단계의 transition을 저장
