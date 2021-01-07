@@ -5,7 +5,8 @@ from parsetree import *
 from examples import *
 
 class Game:
-    def __init__(self):
+    def __init__(self, verbose=False):
+        self.verbose = verbose
         self.done = False
         self.w = PriorityQueue()
         self.scanned = set()
@@ -52,12 +53,13 @@ class Game:
 
             if not k.hasHole():
                 if is_solution(repr(k), self.examples, membership):
-                    print("Spent computation time:", time.time() - self.start_time)
-                    print("Iteration:", self.iterations, "\tCost:", self.current_state.cost, "\tScanned REs:",
-                          len(self.scanned), "\tQueue Size:",
-                          self.w.qsize())
-                    # print("Result RE:", repr(k), "Verified by FAdo:", is_solution(repr(k), examples, membership2))
-                    print("Result RE:", repr(k))
+                    if self.verbose:
+                        print("Spent computation time:", time.time() - self.start_time)
+                        print("Iteration:", self.iterations, "\tCost:", self.current_state.cost, "\tScanned REs:",
+                              len(self.scanned), "\tQueue Size:",
+                              self.w.qsize())
+                        # print("Result RE:", repr(k), "Verified by FAdo:", is_solution(repr(k), examples, membership2))
+                        print("Result RE:", repr(k))
                     success = True
 
                     return k, 100, success, j
@@ -69,9 +71,10 @@ class Game:
         self.current_state, reward, self.done, success = make_next_state(self.current_state, action, self.examples)
 
         if self.iterations % 100 == 0:
-            print("Iteration:", self.iterations, "\tCost:", self.current_state.cost, "\tScanned REs:",
-                  len(self.scanned),
-                  "\tQueue Size:", self.w.qsize())
+            if self.verbose:
+                print("Iteration:", self.iterations, "\tCost:", self.current_state.cost, "\tScanned REs:",
+                      len(self.scanned),
+                      "\tQueue Size:", self.w.qsize())
 
         self.iterations += 1
 

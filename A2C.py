@@ -14,9 +14,9 @@ from kfac import KFACOptimizer
 import argparse
 
 
-NUM_PROCESSES = 1  # 동시 실행 환경 수
+NUM_PROCESSES = 16  # 동시 실행 환경 수
 NUM_ADVANCED_STEP = 5 # 총 보상을 계산할 때 Advantage 학습을 할 단계 수
-SHOW_ITER = 20
+SHOW_ITER = 10
 
 # A2C 손실함수 계산에 사용되는 상수
 value_loss_coef = 0.5
@@ -170,7 +170,7 @@ def train(args):
     gamecount = 0
     duration = 0
 
-    envs = [Game() for i in range(NUM_PROCESSES)]
+    envs = [Game(True) if i == 0 else Game(False) for i in range(NUM_PROCESSES)]
 
     eventid = datetime.now().strftime('runs/ACKTR-%Y%m-%d%H-%M%S')
 
@@ -220,9 +220,12 @@ def train(args):
                 each_step1[i] += 1
 
                 if done_np[i]:
-                    envs[i] = Game()
+                    if i == 0:
+                        envs[i] = Game(True)
+                    else:
+                        envs[i] = Game(False)
+
                     obs_np1[i] = envs[i].state()
-                    each_step1[i] = 0
 
                     if i == 0:
                         gamecount += 1
@@ -232,6 +235,9 @@ def train(args):
                             print('%d Episode: Finished after %d steps' % (gamecount, each_step1[i]))
                             writer.add_scalar('Duration', duration / SHOW_ITER, gamecount)
                             duration = 0
+
+
+                    each_step1[i] = 0
 
             # 보상을 tensor로 변환하고, 에피소드의 총보상에 더해줌
             reward1 = torch.from_numpy(reward_np1).float()

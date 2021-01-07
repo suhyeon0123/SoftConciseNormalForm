@@ -27,7 +27,7 @@ w = PriorityQueue()
 
 scanned = set()
 
-w.put((int(config['HOLE_COST']), RE()))
+w.put((RE().cost, RE()))
 examples = Examples(2)
 answer = examples.getAnswer()
 
@@ -93,14 +93,7 @@ while not w.empty() and not finished:
                     break
 
 
-            if j<2:
-                w.put((cost - int(config['HOLE_COST']) + int(config['SYMBOL_COST']), k))
-            elif j==2: # Union
-                w.put((cost + int(config['HOLE_COST']) + int(config['UNION_COST']) , k))
-            elif j==3: # Concatenation
-                w.put((cost + int(config['HOLE_COST']) + int(config['CONCAT_COST']) , k))
-            else: # Kleene Star
-                w.put((cost + int(config['CLOSURE_COST']) , k))
+            w.put((k.cost, k))
 
 
 
