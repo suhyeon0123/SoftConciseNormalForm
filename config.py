@@ -19,7 +19,7 @@ EPS_DECAY = 50000
 TARGET_UPDATE = 1
 
 LENGTH_LIMIT = 30
-EXAMPLE_LENGHT_LIMIT = 100
+EXAMPLE_LENGTH_LIMIT = 100
 
 # gym 행동 공간에서 행동의 숫자를 얻습니다.
 n_actions = 12

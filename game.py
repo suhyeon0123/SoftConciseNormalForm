@@ -4,6 +4,7 @@ from models import *
 from parsetree import *
 from examples import *
 
+
 class Game:
     def __init__(self, verbose=False):
         self.verbose = verbose
@@ -22,6 +23,11 @@ class Game:
         return self.current_state
 
     def step(self, action):
+
+        self.iterations += 1
+
+        use_queue = action % 2 == 0
+        chosen_action = action // 2
 
         for j, new_elem in enumerate(
                 [Character('0'), Character('1'), Or(), Concatenate(), KleenStar(), Question()]):
@@ -62,13 +68,12 @@ class Game:
                         print("Result RE:", repr(k))
                     success = True
 
-                    return k, 100, success, j
+                    return k, 100, success, j * 2 + use_queue
 
-
-            if j != action:
+            if j != chosen_action:
                 self.w.put((k.cost, k))
 
-        self.current_state, reward, self.done, success = make_next_state(self.current_state, action, self.examples)
+        self.current_state, reward, self.done, success = make_next_state(self.current_state, chosen_action, self.examples)
 
         if self.iterations % 100 == 0:
             if self.verbose:
@@ -76,9 +81,11 @@ class Game:
                       len(self.scanned),
                       "\tQueue Size:", self.w.qsize())
 
-        self.iterations += 1
+        if use_queue and not self.done:
+            self.done = True
 
         if self.done:
+            self.w.put((self.current_state.cost, self.current_state))
             tmp = self.w.get()
             self.current_state = tmp[1]
 

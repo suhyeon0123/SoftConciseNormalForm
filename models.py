@@ -1,9 +1,8 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from config import *
 
-LENGTH_LIMIT = 30
-EXAMPLE_LENGTH_LIMIT = 100
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -113,7 +112,7 @@ class DuelingDQN(nn.Module):
 
 class ACNet(nn.Module):
 
-    def __init__(self, num_symbols=12, embedding_dim=4, hidden_dim=128, num_actions=6):
+    def __init__(self, num_symbols=12, embedding_dim=4, hidden_dim=128, num_actions=12):
         super(ACNet, self).__init__()
 
         self.hidden_dim = hidden_dim

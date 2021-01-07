@@ -11,9 +11,9 @@ import time
 from torch.nn.utils.rnn import pad_sequence
 import torch
 
-
 LENGTH_LIMIT = 30
 EXAMPLE_LENGHT_LIMIT = 100
+
 
 def membership(regex, string):
     # print(regex)
@@ -21,8 +21,10 @@ def membership(regex, string):
     # print(regex, string)
     return bool(re.fullmatch(regex, string))
 
+
 def membership2(regex, string):
     return str2regexp(regex).evalWordP(string)
+
 
 def tensor_to_regex(regex_tensor):
     word_index = {'pad': 0, '0': 1, '1': 2, '(': 3, ')': 4, '?': 5, '*': 6, '|': 7,
@@ -41,24 +43,25 @@ def tensor_to_regex(regex_tensor):
 
     return regex
 
+
 def gen_str():
     str_list = []
 
-    for i in range(random.randrange(1,7)):
-        if random.randrange(1,3) == 1:
+    for i in range(random.randrange(1, 7)):
+        if random.randrange(1, 3) == 1:
             str_list.append('0')
         else:
             str_list.append('1')
 
     return ''.join(str_list)
 
-def make_next_state(state, action, examples):
 
+def make_next_state(state, action, examples):
     copied_state = copy.deepcopy(state)
 
     success = False
 
-    if action==0:
+    if action == 0:
         spread_success = copied_state.spread(Character('0'))
     elif action == 1:
         spread_success = copied_state.spread(Character('1'))
@@ -73,32 +76,32 @@ def make_next_state(state, action, examples):
 
     if len(repr(copied_state)) > LENGTH_LIMIT or not spread_success:
         done = True
-        reward = -10
+        reward = -100
         return copied_state, reward, done, success
 
-    #if repr(copied_state) in scanned:
+    # if repr(copied_state) in scanned:
     #    done = True
     #    reward = -1
     #    return copied_state, reward, done, success
 
     if is_pdead(copied_state, examples):
-        #print("pd",state)
-        #print(examples.getPos())
+        # print("pd",state)
+        # print(examples.getPos())
         done = True
-        reward = -10
+        reward = -100
         return copied_state, reward, done, success
 
     if is_ndead(copied_state, examples):
-        #print("nd",state)
+        # print("nd",state)
         done = True
-        reward = -10
+        reward = -100
         return copied_state, reward, done, success
 
-    #if is_redundant(copied_state, examples):
-    #    #print("rd ",state )
-    #    done = True
-    #    reward = 0
-    #    return copied_state, reward, done, success
+    if is_redundant(copied_state, examples):
+        #print("rd ",state )
+        done = True
+        reward = -100
+        return copied_state, reward, done, success
 
     if not copied_state.hasHole():
         done = True
@@ -106,16 +109,15 @@ def make_next_state(state, action, examples):
             success = True
             reward = 100
         else:
-            reward = -10
+            reward = -100
     else:
         done = False
-        reward = -1
+        reward = -10
 
     return copied_state, reward, done, success
 
 
-def make_embeded(state,examples, padding=False):
-
+def make_embeded(state, examples, padding=False):
     pos_examples = examples.getPos()
     neg_examples = examples.getNeg()
 
@@ -171,6 +173,7 @@ def make_embeded(state,examples, padding=False):
 
     return regex_tensor, pos_example_tensor, neg_example_tensor
 
+
 def rand_example():
     gen = reStringRGenerator(['0', '1'], random.randrange(3, 15), eps=None)
     regex = gen.generate().replace('+', '|')
@@ -204,7 +207,6 @@ def rand_example():
 
 
 def is_solution(regex, examples, membership):
-
     if regex == '@emptyset':
         return False
 
@@ -218,8 +220,8 @@ def is_solution(regex, examples, membership):
 
     return True
 
-def is_pdead(s, examples):
 
+def is_pdead(s, examples):
     s_copy = copy.deepcopy(s)
     s_copy.spreadAll()
     s = repr(s_copy)
@@ -233,8 +235,8 @@ def is_pdead(s, examples):
 
     return False
 
-def is_ndead(s, examples):
 
+def is_ndead(s, examples):
     s_copy = copy.deepcopy(s)
     s_copy.spreadNp()
     s = repr(s_copy)
@@ -248,8 +250,9 @@ def is_ndead(s, examples):
 
     return False
 
+
 def is_redundant(s, examples):
-    #unroll
+    # unroll
     '''# if there is #|# - infinite loop..
     if '#|#' in repr(s):
         unrolled_state = copy.deepcopy(s)
@@ -260,7 +263,6 @@ def is_redundant(s, examples):
         unrolled_state = copy.deepcopy(s)
         unrolled_state.unroll()'''
 
-
     if type(s.r) == type(KleenStar()):
         unrolled_state = copy.deepcopy(s)
         unrolled_state.unroll_entire()
@@ -268,11 +270,9 @@ def is_redundant(s, examples):
         unrolled_state = copy.deepcopy(s)
         unrolled_state.unroll()
 
-    #unrolled_state = copy.deepcopy(s)
+    # unrolled_state = copy.deepcopy(s)
 
-
-
-    #split
+    # split
     prev = [unrolled_state]
     next = []
 
@@ -291,25 +291,24 @@ def is_redundant(s, examples):
                 s_right = t
                 s_right.split(1)
 
-            #deepcopy problem
+            # deepcopy problem
             prev.append(s_left)
             prev.append(s_right)
 
         else:
             t.spreadAll()
             next.append(t)
-    #print(unrolled_state)
-    #unrolled_state.spreadAll()
-    #print(unrolled_state)
-    #next = [unrolled_state]
+    # print(unrolled_state)
+    # unrolled_state.spreadAll()
+    # print(unrolled_state)
+    # next = [unrolled_state]
 
-    #check part
+    # check part
     for state in next:
         count = 0
         for string in examples.getPos():
             if membership(repr(state), string):
-                count = count +1
+                count = count + 1
         if count == 0:
             return True
     return False
-

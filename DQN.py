@@ -106,7 +106,6 @@ class NaivePrioritizedBuffer(object):
 # ----------------------
 
 
-
 policy_net = DuelingDQN().to(device)
 
 # policy_net.load_state_dict(torch.load('saved_model/DQN.pth'))
@@ -117,7 +116,6 @@ target_net.eval()
 
 optimizer = optim.RMSprop(policy_net.parameters(), lr=0.00025)
 # optimizer = optim.Adam(policy_net.parameters(), lr=0.001)
-
 
 
 if args.prioritized:
@@ -177,7 +175,7 @@ def optimize_model(beta=0.4):
     # Q(s_t, a) 계산 - 모델이 Q(s_t)를 계산하고, 취한 행동의 열을 선택합니다.
     # 이들은 policy_net에 따라 각 배치 상태에 대해 선택된 행동입니다.
     state_action_values = policy_net(state_batch, pos_example_batch, neg_example_batch).view(-1, n_actions).gather(1,
-                                                                                                           action_batch)
+                                                                                                                   action_batch)
 
     # 모든 다음 상태를 위한 V(s_{t+1}) 계산
     # non_final_next_states의 행동들에 대한 기대값은 "이전" target_net을 기반으로 계산됩니다.
@@ -233,7 +231,7 @@ for i_episode in range(num_episodes):
 
     example_num = random.randint(1, 26)
     examples = Examples(example_num)
-    #examples = Examples(2)
+    examples = Examples(2)
     # examples = rand_example()
 
     w.put((RE().cost, RE()))
@@ -245,11 +243,9 @@ for i_episode in range(num_episodes):
             w.queue.clear()
             scanned.clear()
             i = 0
-            break
             w.put((RE().cost, RE()))
-            print("Restart")
 
-        if done == True:
+        if done:
             tmp = w.get()
             state = tmp[1]
 
@@ -259,8 +255,7 @@ for i_episode in range(num_episodes):
         chosen_action = select_action(*make_embeded(state, examples))[0][0].item()
 
         use_queue = chosen_action % 2 == 0
-        chosen_action = chosen_action // 2
-
+        new_action = chosen_action // 2
 
         for j, new_elem in enumerate(
                 [Character('0'), Character('1'), Or(), Concatenate(), KleenStar(), Question()]):
@@ -316,6 +311,7 @@ for i_episode in range(num_episodes):
                                 torch.FloatTensor([reward]).to(device), done)
 
                     success = True
+                    done = True
                     break
                 else:
                     reward = - 100
@@ -323,24 +319,30 @@ for i_episode in range(num_episodes):
                                 make_embeded(k, examples)[0],
                                 torch.FloatTensor([reward]).to(device), True)
             else:
-                next_state, reward, done, success = make_next_state(state, j, examples)
+                reward = -10
                 memory.push(*make_embeded(state, examples), torch.LongTensor([[j]]).to(device),
-                            make_embeded(next_state, examples)[0],
+                            make_embeded(k, examples)[0],
                             torch.FloatTensor([reward]).to(device), done)
 
-
-            #if j != chosen_action[0][0].item():
-            w.put((k.cost, k))
+            if j != new_action:
+                w.put((k.cost, k))
 
         if success:
             break
         else:
-            next_state, reward, done, success = make_next_state(state, chosen_action, examples)
+            next_state, reward, done, success = make_next_state(state, new_action, examples)
+
+            if success:
+                print("how...")
+
             reward_sum += reward
             reward_num += 1
 
         if use_queue and not done:
             done = True
+
+        if done:
+            w.put((next_state.cost, next_state))
 
         state = next_state
 
@@ -350,7 +352,8 @@ for i_episode in range(num_episodes):
             loss = optimize_model()
 
         if i % 100 == 0:
-            print("Episode:", i_episode, "\tEx Num:", example_num, "\tIteration:", i, "\tCost:", k.cost, "\tScanned REs:", len(scanned),
+            print("Episode:", i_episode, "\tEx Num:", example_num, "\tIteration:", i, "\tCost:", k.cost,
+                  "\tScanned REs:", len(scanned),
                   "\tQueue Size:", w.qsize(), "\tLoss:", format(loss.item(), '.7f'), "\tAvg Reward:",
                   reward_sum / reward_num)
             reward_sum = 0
