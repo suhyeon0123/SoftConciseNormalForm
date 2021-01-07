@@ -1,7 +1,6 @@
 from queue import PriorityQueue
 from util import *
 import argparse
-from examples import *
 
 
 parser = argparse.ArgumentParser()
@@ -9,8 +8,6 @@ parser.add_argument("-e", "--examples", type=int,
                     help="Example number")
 parser.add_argument("-u", "--unambiguous", help="Set ambiguity",
                     action="store_true")
-parser.add_argument("-r", "--redundant", help="Set redundancy checker", action="store_true")
-
 args = parser.parse_args()
 
 
@@ -20,13 +17,18 @@ import faulthandler
 
 faulthandler.enable()
 
+config = configparser.ConfigParser()
+config.read('config.ini')
+config = config['default']
+
+
 
 w = PriorityQueue()
 
 scanned = set()
 
-w.put((RE().cost, RE()))
-examples = Examples(True,args.examples)
+w.put((int(config['HOLE_COST']), RE()))
+examples = Examples(2)
 answer = examples.getAnswer()
 
 print(examples.getPos(), examples.getNeg())
@@ -56,9 +58,9 @@ while not w.empty() and not finished:
 
             k = copy.deepcopy(s)
 
-            if not k.spread(new_elem, 10):
+            if not k.spread(new_elem):
                 continue
-            #print("k=",k)
+
             traversed += 1
             if repr(k) in scanned:
                 # print("Already scanned?", repr(k))
@@ -76,7 +78,7 @@ while not w.empty() and not finished:
                 #print(repr(k), "is ndead")
                 continue
 
-            if args.redundant and is_redundant(k,examples):
+            if is_redundant(k,examples):
                 #print(repr(k), "is redundant")
                 continue
 
@@ -91,7 +93,15 @@ while not w.empty() and not finished:
                     break
 
 
-            w.put((k.cost, k))
+            if j<2:
+                w.put((cost - int(config['HOLE_COST']) + int(config['SYMBOL_COST']), k))
+            elif j==2: # Union
+                w.put((cost + int(config['HOLE_COST']) + int(config['UNION_COST']) , k))
+            elif j==3: # Concatenation
+                w.put((cost + int(config['HOLE_COST']) + int(config['CONCAT_COST']) , k))
+            else: # Kleene Star
+                w.put((cost + int(config['CLOSURE_COST']) , k))
+
 
 
     if i % 1000 == 0:
