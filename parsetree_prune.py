@@ -2,7 +2,7 @@
 import copy
 import configparser
 import random
-
+import re2 as re
 
 config = configparser.ConfigParser()
 config.read('config.ini')
@@ -59,7 +59,12 @@ class Hole:
         return False
     def make_child(self):
         return
-
+    def overlap(self):
+        return False
+    def equivalent_KO(self, parentId):
+        return False
+    def getn(self):
+        return 0
 
 
 class RE:
@@ -126,13 +131,26 @@ class RE:
         s2 = copy.deepcopy(self.r)
         r = Concatenate(Concatenate(s1,s1),s2)
     def split(self, side):
-        self.r.split(side)
         self.string = None
+        if type(self.r) == type(Or()):
+            if type(self.r.list[side]) == type(KleenStar()):
+                self.r = copy.deepcopy(self.r.list[side].r)
+            else:
+                self.r = copy.deepcopy(self.r.list[side])
+            return True
+
+        return self.r.split(side)
     def make_child(self, count):
         if type(self.r) == type((Hole())):
             self.r = get_rand_re(count)
         else:
             self.r.make_child(count)
+    def overlap(self):
+        return self.r.overlap()
+    def equivalent_KO(self, parentId):
+        return self.r.equivalent_KO(10)
+    def getn(self):
+        return self.r.getn()
 
 
 class Epsilon(RE):
@@ -156,7 +174,12 @@ class Epsilon(RE):
         return False
     def make_child(self, count):
         return
-
+    def overlap(self):
+        return False
+    def equivalent_KO(self, parentId):
+        return False
+    def getn(self):
+        return 0
 
 
 class EpsilonBlank(RE):
@@ -180,7 +203,12 @@ class EpsilonBlank(RE):
         return False
     def make_child(self, count):
         return
-
+    def overlap(self):
+        return False
+    def equivalent_KO(self, parentId):
+        return False
+    def getn(self):
+        return 0
 
 class Character(RE):
     def __init__(self, c):
@@ -204,6 +232,12 @@ class Character(RE):
         return False
     def make_child(self, count):
         return
+    def overlap(self):
+        return False
+    def equivalent_KO(self, parentId):
+        return False
+    def getn(self):
+        return 0
 
 
 class KleenStar(RE):
@@ -279,19 +313,23 @@ class KleenStar(RE):
     def split(self, side):
         self.string = None
         if type(self.r) == type(Or()):
-            if side == 0:
-                self.r = copy.deepcopy(self.r.a.r) if type(self.r.a) == type(KleenStar()) else copy.deepcopy(self.r.a)
+            if side == -1:
+                self.r = Hole()
+            elif type(self.r.list[side]) == type(KleenStar()):
+                self.r = copy.deepcopy(self.r.list[side].r)
             else:
-                self.r = copy.deepcopy(self.r.b.r) if type(self.r.a) == type(KleenStar()) else copy.deepcopy(self.r.b)
+                self.r = copy.deepcopy(self.r.list[side])
             return True
-        elif type(self.r) == type(Question()):
+
+        '''elif type(self.r) == type(Question()):
             if side == 0:
                 self.r = copy.deepcopy(self.r.r.r)
             else:
                 self.r = Epsilon()
-            return True
+            return True'''
 
         return self.r.split(side)
+
     def make_child(self, count):
         if type(self.r) == type((Hole())):
             while True:
@@ -301,6 +339,13 @@ class KleenStar(RE):
                     break
         else:
             self.r.make_child(count)
+    def overlap(self):
+        return self.r.overlap()
+    def equivalent_KO(self, parentId):
+        return self.r.equivalent_KO(0)
+    def getn(self):
+        return self.r.getn()
+
 
 
 class Question(RE):
@@ -387,7 +432,12 @@ class Question(RE):
                     break
         else:
             self.r.make_child(count)
-
+    def overlap(self):
+        return self.r.overlap()
+    def equivalent_KO(self, parentId):
+        return self.r.equivalent_KO(1)
+    def getn(self):
+        return self.r.getn()
 
 class Concatenate(RE):
     def __init__(self, a=Hole(), b=Hole()):
@@ -506,9 +556,23 @@ class Concatenate(RE):
     def split(self, side):
         self.string = None
         if type(self.a) == type(Or()):
-            self.a = copy.deepcopy(self.a.a) if side == 0 else copy.deepcopy(self.a.b)
+            if side == -1:
+                self.a = Hole()
+            else:
+                self.a = copy.deepcopy(self.a.list[side])
             return True
-        elif type(self.a) == type(Question()):
+
+        if self.a.split(side):
+            return True
+
+        if type(self.b) == type(Or()):
+            if side == -1:
+                self.b = Hole()
+            else:
+                self.b = copy.deepcopy(self.b.list[side])
+            return True
+
+        '''elif type(self.a) == type(Question()):
             self.a = copy.deepcopy(self.a.r) if side == 0 else Epsilon()
             return True
         elif type(self.b) == type(Or()):
@@ -516,12 +580,11 @@ class Concatenate(RE):
             return True
         elif type(self.b) == type(Question()):
             self.b = copy.deepcopy(self.b.r) if side == 0 else Epsilon()
-            return True
+            return True'''
 
-        if self.a.split(side):
-            return True
-        else:
-            return self.b.split(side)
+
+        return self.b.split(side)
+
 
     def make_child(self, count):
         if type(self.a) == type((Hole())):
@@ -533,14 +596,15 @@ class Concatenate(RE):
             self.b = get_rand_re(count)
         else:
             self.b.make_child(count)
-
-
+    def overlap(self):
+        return self.a.overlap() or self.b.overlap()
+    def equivalent_KO(self, parentId):
+        return self.a.equivalent_KO(2) or self.b.equivalent_KO(2)
+    def getn(self):
+        return self.a.getn() if self.a.getn() != 0 else self.b.getn()
 
 class Or(RE):
     def __init__(self, a=Hole(), b=Hole()):
-        self.set = set()
-        self.set.add(a)
-        self.set.add(b)
         self.list = list()
         self.list.append(a)
         self.list.append(b)
@@ -583,16 +647,15 @@ class Or(RE):
         for index, re in enumerate(self.list):
             if type(re) == type((Hole())) and type(case)==type(Or()):
                 self.list.append(Hole())
+                self.list.sort(key=lambda regex: repr(regex))
                 return True
             elif type(re)==type((Hole())) and type(case)!=type(Question()) and not (parentId == 0 and type(case) == type(KleenStar())):
-                if repr(case) not in list(map(repr, self.list)):
-                    self.list[index] = case
-                    return True
-                else:
-                    return False
-
+                self.list[index] = case
+                self.list.sort(key=lambda regex: repr(regex))
+                return True
         for index, re in enumerate(self.list):
             if self.list[index].spread(case, 3):
+                self.list.sort(key=lambda regex: repr(regex))
                 return True
         return False
 
@@ -627,26 +690,13 @@ class Or(RE):
 
     def unroll(self):
         self.string = None
-        if type(self.a) == type(KleenStar()) and not self.a.hasHole():
-            s = copy.deepcopy(self.a.r)
-            self.a = Concatenate(Concatenate(s, s), KleenStar(s))
-
-            self.a.a.unroll()
-            self.a.b.unroll()
-
-        else:
-            self.a.unroll()
-
-        if type(self.b) == type(KleenStar()) and not self.b.hasHole():
-            s = copy.deepcopy(self.b.r)
-            self.b = Concatenate(Concatenate(s, s), KleenStar(s))
-
-            self.b.a.unroll()
-            self.b.b.unroll()
-
-        else:
-            self.b.unroll()
-
+        for index, regex in enumerate(self.list):
+            if type(regex) == type(KleenStar()) and not regex.hasHole():
+                self.list[index] = Concatenate(Concatenate(regex.r, regex.r), KleenStar(regex.r))
+                self.list[index].a.unroll()
+                self.list[index].b.unroll()
+            else:
+                self.list[index].unroll()
 
     def split(self, side):
         return
@@ -661,6 +711,42 @@ class Or(RE):
             self.b = get_rand_re(count)
         else:
             self.b.make_child(count)
+
+    def overlap(self):
+        noholelist = []
+        for regex in self.list:
+            if not regex.hasHole():
+                noholelist.append(repr(regex))
+        noholeset = set(noholelist)
+        #print(noholelist,"  ",noholeset)
+        if len(noholelist) != len(noholeset):
+            return True
+
+        for regex in self.list:
+            if regex.overlap():
+                return True
+        return False
+    def equivalent_KO(self, parentId):
+        if parentId == 0 and not self.hasHole() and '|' not in repr(self):
+            print(repr(self))
+            return bool(re.fullmatch(repr(self), '0')) and bool(re.fullmatch(repr(self), '1'))
+        for regex in self.list:
+            if regex.equivalent_KO(3):
+                return True
+        return False
+    def getn(self):
+        for regex in self.list:
+            if type(regex) == type(Hole()):
+                return -1
+            if type(regex) == type(KleenStar()) and type(regex.r) == type(Hole()):
+                return -1
+            if type(regex) == type(Concatenate()) and type(regex.a) == type(Hole()) and type(regex.b) == type(Hole()):
+                return -1
+            if type(regex) == type(Concatenate()) and type(regex.a) == type(KleenStar()) and type(regex.a.r) == type(Hole()) and type(regex.b) == type(Hole()):
+                return -1
+        return len(self.list)
+
+
 
 
 
