@@ -1,13 +1,8 @@
 #Regular Expression Implementation ,Written by Adrian Stoll
 import copy
-import configparser
 import random
 import re2 as re
-
-config = configparser.ConfigParser()
-config.read('config.ini')
-config = config['default']
-
+from config import *
 
 def get_rand_re(depth):
 
@@ -29,7 +24,7 @@ def get_rand_re(depth):
         if case <= 0:
             return Or()
         elif case <= 1:
-            return Concatenate()
+            return Concatenate(Hole(),Hole())
         elif case <= 2:
             return KleenStar()
         elif case <= 3:
@@ -75,7 +70,7 @@ class RE:
         self.hasHole2 = True
         self.string = None
         self.first = True
-        self.cost = int(config['HOLE_COST'])
+        self.cost = HOLE_COST
 
     def __repr__(self):
         if not self.string:
@@ -90,14 +85,14 @@ class RE:
         return self.hasHole2
     def spread(self, case, parentId):
 
-        if type(case) == type(Concatenate()):
-            self.cost += int(config['HOLE_COST']) + int(config['CONCAT_COST'])
+        if type(case) == type(Concatenate(Hole(),Hole())):
+            self.cost += HOLE_COST + CONCAT_COST
         elif type(case) == type(Or()):
-            self.cost += int(config['HOLE_COST']) + int(config['UNION_COST'])
+            self.cost += HOLE_COST + UNION_COST
         elif type(case) == type(KleenStar()) or type(case) == type(Question()):
-            self.cost += int(config['HOLE_COST']) + int(config['CLOSURE_COST'])
+            self.cost += CLOSURE_COST
         else:
-            self.cost += -int(config['HOLE_COST']) + int(config['SYMBOL_COST'])
+            self.cost += - HOLE_COST + SYMBOL_COST
 
         self.string = None
 
@@ -125,11 +120,14 @@ class RE:
     def unroll(self):
         self.string = None
         self.r.unroll()
-        self.string = None
     def unroll_entire(self):
+        self.string = None
         s1 = copy.deepcopy(self.r.r)
-        s2 = copy.deepcopy(self.r)
-        r = Concatenate(Concatenate(s1,s1),s2)
+        s2 = copy.deepcopy(self.r.r)
+        s3 = copy.deepcopy(self.r)
+        self.r = Concatenate(s1,s2,s3)
+        for index, regex in enumerate(self.r.list):
+            self.r.list[index].unroll()
     def split(self, side):
         self.string = None
         if type(self.r) == type(Or()):
@@ -440,8 +438,10 @@ class Question(RE):
         return self.r.getn()
 
 class Concatenate(RE):
-    def __init__(self, a=Hole(), b=Hole()):
-        self.a, self.b = a, b
+    def __init__(self, *regexs):
+        self.list = list()
+        for regex in regexs:
+            self.list.append(regex)
         self.level = 2
         self.string = None
         self.hasHole2 = True
@@ -457,55 +457,47 @@ class Concatenate(RE):
             else:
                 return '{}'.format(side)
 
-        if '@emptyset' in repr(self.a) or '@emptyset' in repr(self.b):
-            self.string = '@emptyset'
-            return self.string
+        for regex in self.list:
+            if '@emptyset' in repr(regex):
+                self.string = '@emptyset'
+                return self.string
 
-        if '@epsilon' == repr(self.a):
-            self.string = formatSide(self.b)
-            return self.string
-        elif '@epsilon' == repr(self.b):
-            self.string = formatSide(self.a)
-            return self.string
-
-        self.string = formatSide(self.a) + formatSide(self.b)
-        return self.string
+        str_list = []
+        for regex in self.list:
+            if '@epsilon' != repr(regex):
+                str_list.append(formatSide(regex))
+        return ''.join(str_list)
 
     def hasHole(self):
-
         if not self.hasHole2:
             return False
 
-        self.hasHole2 = self.a.hasHole() or self.b.hasHole()
-
+        self.hasHole2 = any(list(i.hasHole() for i in self.list))
         return self.hasHole2
 
     def spread(self, case, parentId):
         self.string = None
 
-        if type(self.a)==type((Hole())):
-            self.a = case
-            return True
-        elif type(self.b)==type((Hole())):
-            self.b = case
-            return True
-        if self.a.spread(case, 2):
-            return True
-        else:
-            return self.b.spread(case, 2)
+        for index , regex in enumerate(self.list):
+            if type(regex) == type(Hole()) and type(case) == type(Concatenate(Hole(),Hole())):
+                self.list.append(Hole())
+                return True
+            elif type(regex) == type(Hole()):
+                self.list[index] = case
+                return True
+
+        for index, regex in enumerate(self.list):
+            if self.list[index].spread(case, 2):
+                return True
+        return False
 
     def spreadAll(self):
         self.string = None
-
-        if type(self.a)==type((Hole())):
-            self.a = KleenStar(Or(Character('0'), Character('1')))
-        else:
-            self.a.spreadAll()
-        if type(self.b)==type((Hole())):
-            self.b = KleenStar(Or(Character('0'), Character('1')))
-
-        else:
-            self.b.spreadAll()
+        for index, regex in enumerate(self.list):
+            if type(regex) == type(Hole()):
+                self.list[index] = KleenStar(Or(Character('0'), Character('1')))
+            else:
+                self.list[index].spreadAll()
 
     def spreadRand(self):
         self.string = None
@@ -520,70 +512,52 @@ class Concatenate(RE):
 
     def spreadNp(self):
         self.string = None
-        if type(self.a)==type((Hole())):
-            self.a = Character('@emptyset')
-        else:
-            self.a.spreadNp()
-
-        if type(self.b)==type((Hole())):
-            self.b = Character('@emptyset')
-        else:
-            self.b.spreadNp()
+        for index, regex in enumerate(self.list):
+            if type(regex) == type(Hole()):
+                self.list[index] = Character('@emptyset')
+            else:
+                self.list[index].spreadNp()
 
     def unroll(self):
         self.string = None
-        if type(self.a) == type(KleenStar()) and not self.a.hasHole():
-            s = copy.deepcopy(self.a.r)
-            self.a = Concatenate(Concatenate(s, s), KleenStar(s))
-
-            self.a.a.unroll()
-            self.a.b.unroll()
-
-        else:
-            self.a.unroll()
-
-        if type(self.b) == type(KleenStar()) and not self.b.hasHole():
-            s = copy.deepcopy(self.b.r)
-            self.b = Concatenate(Concatenate(s, s), KleenStar(s))
-
-            self.b.a.unroll()
-            self.b.b.unroll()
-
-        else:
-            self.b.unroll()
-
+        for index, regex in enumerate(self.list):
+            if type(regex) == type(KleenStar()) and not regex.hasHole():
+                a = copy.deepcopy(regex.r)
+                b = copy.deepcopy(regex.r)
+                c = copy.deepcopy(regex)
+                self.list[index] = Concatenate(a,b,c)
+                self.list[index].list[0].unroll()
+                self.list[index].list[1].unroll()
+                self.list[index].list[2].r.unroll()
+            else:
+                self.list[index].unroll()
 
     def split(self, side):
         self.string = None
-        if type(self.a) == type(Or()):
-            if side == -1:
-                self.a = Hole()
-            else:
-                self.a = copy.deepcopy(self.a.list[side])
-            return True
-
-        if self.a.split(side):
-            return True
-
-        if type(self.b) == type(Or()):
-            if side == -1:
-                self.b = Hole()
-            else:
-                self.b = copy.deepcopy(self.b.list[side])
-            return True
+        for index, regex in enumerate(self.list):
+            if type(regex) == type(Or()):
+                if side == -1:
+                    self.list[index] = Hole()
+                else:
+                    self.list[index] = copy.deepcopy(self.list[index].list[side])
+                return True
+            if self.list[index].split(side):
+                return True
 
         '''elif type(self.a) == type(Question()):
-            self.a = copy.deepcopy(self.a.r) if side == 0 else Epsilon()
-            return True
-        elif type(self.b) == type(Or()):
-            self.b = copy.deepcopy(self.b.a) if side == 0 else copy.deepcopy(self.b.b)
-            return True
-        elif type(self.b) == type(Question()):
-            self.b = copy.deepcopy(self.b.r) if side == 0 else Epsilon()
-            return True'''
+                    self.a = copy.deepcopy(self.a.r) if side == 0 else Epsilon()
+                    return True
+                elif type(self.b) == type(Or()):
+                    self.b = copy.deepcopy(self.b.a) if side == 0 else copy.deepcopy(self.b.b)
+                    return True
+                elif type(self.b) == type(Question()):
+                    self.b = copy.deepcopy(self.b.r) if side == 0 else Epsilon()
+                    return True'''
+
+        return False
 
 
-        return self.b.split(side)
+
 
 
     def make_child(self, count):
@@ -597,11 +571,16 @@ class Concatenate(RE):
         else:
             self.b.make_child(count)
     def overlap(self):
-        return self.a.overlap() or self.b.overlap()
+        return any(list(i.overlap() for i in self.list))
     def equivalent_KO(self, parentId):
-        return self.a.equivalent_KO(2) or self.b.equivalent_KO(2)
+        return any(list(i.equivalent_KO(2) for i in self.list))
     def getn(self):
-        return self.a.getn() if self.a.getn() != 0 else self.b.getn()
+        for index, regex in enumerate(self.list):
+            tmp = regex.getn()
+            if tmp != 0:
+                return tmp
+        return 0
+
 
 class Or(RE):
     def __init__(self, a=Hole(), b=Hole()):
@@ -623,11 +602,11 @@ class Or(RE):
                 return '{}'.format(side)
 
         str_list = []
-        for re in self.list:
-            if repr(re) != '@emptyset':
+        for regex in self.list:
+            if repr(regex) != '@emptyset':
                 if str_list:
                     str_list.append("|")
-                str_list.append(formatSide(re))
+                str_list.append(formatSide(regex))
         if not str_list:
             return '@emptyset'
         else:
@@ -644,16 +623,16 @@ class Or(RE):
     def spread(self, case, parentId):
         self.string = None
 
-        for index, re in enumerate(self.list):
-            if type(re) == type((Hole())) and type(case)==type(Or()):
+        for index, regex in enumerate(self.list):
+            if type(regex) == type((Hole())) and type(case)==type(Or()):
                 self.list.append(Hole())
                 self.list.sort(key=lambda regex: repr(regex))
                 return True
-            elif type(re)==type((Hole())) and type(case)!=type(Question()) and not (parentId == 0 and type(case) == type(KleenStar())):
+            elif type(regex)==type((Hole())) and type(case)!=type(Question()) and not (parentId == 0 and type(case) == type(KleenStar())):
                 self.list[index] = case
                 self.list.sort(key=lambda regex: repr(regex))
                 return True
-        for index, re in enumerate(self.list):
+        for index, regex in enumerate(self.list):
             if self.list[index].spread(case, 3):
                 self.list.sort(key=lambda regex: repr(regex))
                 return True
@@ -661,16 +640,16 @@ class Or(RE):
 
     def spreadAll(self):
         self.string = None
-        for index, re in enumerate(self.list):
-            if type(re)==type(Hole()):
+        for index, regex in enumerate(self.list):
+            if type(regex)==type(Hole()):
                 self.list[index] = KleenStar(Or(Character('0'), Character('1')))
             else:
                 self.list[index].spreadAll()
 
     def spreadNp(self):
         self.string = None
-        for index, re in enumerate(self.list):
-            if type(re) == type(Hole()):
+        for index, regex in enumerate(self.list):
+            if type(regex) == type(Hole()):
                 self.list[index] = Character('@emptyset')
             else:
                 self.list[index].spreadNp()
@@ -692,9 +671,9 @@ class Or(RE):
         self.string = None
         for index, regex in enumerate(self.list):
             if type(regex) == type(KleenStar()) and not regex.hasHole():
-                self.list[index] = Concatenate(Concatenate(regex.r, regex.r), KleenStar(regex.r))
-                self.list[index].a.unroll()
-                self.list[index].b.unroll()
+                self.list[index] = Concatenate(regex.r, regex.r, KleenStar(regex.r))
+                for index2, regex2 in enumerate(self.list[index].list):
+                    self.list[index].list[index2].unroll()
             else:
                 self.list[index].unroll()
 
@@ -726,6 +705,7 @@ class Or(RE):
             if regex.overlap():
                 return True
         return False
+
     def equivalent_KO(self, parentId):
         if parentId == 0 and not self.hasHole() and '|' not in repr(self):
             print(repr(self))
@@ -740,10 +720,10 @@ class Or(RE):
                 return -1
             if type(regex) == type(KleenStar()) and type(regex.r) == type(Hole()):
                 return -1
-            if type(regex) == type(Concatenate()) and type(regex.a) == type(Hole()) and type(regex.b) == type(Hole()):
-                return -1
-            if type(regex) == type(Concatenate()) and type(regex.a) == type(KleenStar()) and type(regex.a.r) == type(Hole()) and type(regex.b) == type(Hole()):
-                return -1
+            if type(regex) == type(Concatenate(Hole(), Hole())):
+                for regex2 in regex.list:
+                    if type(regex2) == type(Hole()) or (type(regex2) == type(KleenStar()) and type(regex2.r) == type(Hole()) ):
+                        return -1
         return len(self.list)
 
 
