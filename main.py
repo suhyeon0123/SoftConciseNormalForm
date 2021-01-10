@@ -1,7 +1,7 @@
 from queue import PriorityQueue
 from util import *
 import argparse
-
+from examples import*
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-e", "--examples", type=int,
@@ -24,7 +24,10 @@ w = PriorityQueue()
 scanned = set()
 
 w.put((RE().cost, RE()))
-examples = Examples(2)
+if args.examples:
+    examples = Examples(args.examples)
+else:
+    examples = Examples(5)
 answer = examples.getAnswer()
 
 print(examples.getPos(), examples.getNeg())
@@ -43,18 +46,17 @@ while not w.empty() and not finished:
     cost = tmp[0]
 
     prevCost = cost
-
     hasHole = s.hasHole()
 
     if hasHole :
 
-        for j, new_elem in enumerate([Character('0'), Character('1'), Or(), Concatenate(), KleenStar(), Question()]):
+        for j, new_elem in enumerate([Character('0'), Character('1'), Or(), Concatenate(Hole(),Hole()), KleenStar()]):
 
             #print(repr(s), repr(new_elem))
 
             k = copy.deepcopy(s)
 
-            if not k.spread(new_elem):
+            if not k.spread(new_elem,10):
                 continue
 
             traversed += 1
@@ -74,10 +76,27 @@ while not w.empty() and not finished:
                 #print(repr(k), "is ndead")
                 continue
 
-            if is_redundant(k,examples):
-                #print(repr(k), "is redundant")
+            if is_overlap(k):
+                #print(repr(k), "is overlap")
                 continue
 
+            if is_orinclusive(k):
+                 #print(repr(k), "is orinclusive")
+                 continue
+
+            if is_kinclusive(k):
+                 print(repr(k), "is kinclusive")
+                 continue
+
+            if is_redundant(k,examples):
+                print(repr(k), "is redundant")
+                continue
+
+            if is_equivalent_KO(k):
+                #print(repr(k), "is equivalent_KO")
+                continue
+
+            #print(k)
             if not k.hasHole():
                 if is_solution(repr(k), examples, membership):
                     end = time.time()

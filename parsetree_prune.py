@@ -62,6 +62,8 @@ class Hole:
         return 0
     def orinclusive(self):
         return False
+    def kinclusive(self):
+        return False
 
 
 class RE:
@@ -153,6 +155,8 @@ class RE:
         return self.r.getn()
     def orinclusive(self):
         return self.r.orinclusive()
+    def kinclusive(self):
+        return self.r.kinclusive()
 
 class Epsilon(RE):
     def __init__(self):
@@ -182,6 +186,8 @@ class Epsilon(RE):
     def getn(self):
         return 0
     def orinclusive(self):
+        return False
+    def kinclusive(self):
         return False
 
 class EpsilonBlank(RE):
@@ -213,6 +219,8 @@ class EpsilonBlank(RE):
         return 0
     def orinclusive(self):
         return False
+    def kinclusive(self):
+        return False
 
 class Character(RE):
     def __init__(self, c):
@@ -243,6 +251,8 @@ class Character(RE):
     def getn(self):
         return 0
     def orinclusive(self):
+        return False
+    def kinclusive(self):
         return False
 
 class KleenStar(RE):
@@ -352,6 +362,38 @@ class KleenStar(RE):
         return self.r.getn()
     def orinclusive(self):
         return self.r.orinclusive()
+    def kinclusive(self):
+        if type(self.r) == type(Concatenate()):
+            for regex in self.r.list:
+                if type(regex) == type(KleenStar()) and not regex.hasHole():
+                    count = 0
+                    for regex2 in self.r.list:
+                        if repr(regex.r) == repr(regex2) or repr(regex)==repr(regex2):
+                            count +=1
+                    if count == len(self.r.list):
+                        return True
+                if regex.kinclusive():
+                    return True
+        if type(self.r) == type(Concatenate()):
+            if '(0|1)*' in repr(self.r):
+                return True
+
+        '''if type(self.r) == type(Or()):
+            for regex in self.r.list:
+                if type(regex) == type(Concatenate()):
+                    for regex2 in regex.list:
+                        if type(regex2) == type(KleenStar()) and not regex2.hasHole():
+                            count = 0
+                            for regex3 in regex.list:
+                                if repr(regex2.r) == repr(regex3) or repr(regex2)==repr(regex3):
+                                    count+=1
+                            if count == len(self.r.list):
+                                print('type2')
+                                return True'''
+
+
+
+
 
 
 class Question(RE):
@@ -446,6 +488,8 @@ class Question(RE):
         return self.r.getn()
     def orinclusive(self):
         return self.r.orinclusive()
+    def kinclusive(self):
+        return self.r.kinclusive()
 
 class Concatenate(RE):
     def __init__(self, *regexs):
@@ -593,6 +637,8 @@ class Concatenate(RE):
         return 0
     def orinclusive(self):
         return any(list(i.orinclusive() for i in self.list))
+    def kinclusive(self):
+        return any(list(i.kinclusive() for i in self.list))
 
 class Or(RE):
     def __init__(self, a=Hole(), b=Hole()):
@@ -747,15 +793,16 @@ class Or(RE):
                                 break
                             count += 1
                         if count == len(regex2.list):
-                            print("type2")
+                            #print("type2")
                             return True
+
 
             if type(regex) == type(KleenStar()) and type(regex.r) == type(Or()):
                 for inconcat in regex.r.list:
                     if not inconcat.hasHole():
                         for x in self.list:
                             if repr(x) == repr(inconcat):
-                                print("type3")
+                                #print("type3")
                                 return True
 
 
@@ -763,6 +810,8 @@ class Or(RE):
                 return True
 
         return False
+    def kinclusive(self):
+        return any(list(i.kinclusive() for i in self.list))
 
 
 

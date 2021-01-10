@@ -2,29 +2,26 @@ from FAdo.reex import *
 from FAdo.fa import *
 # from FAdo.fio import *
 import re2 as re
-from parsetree import *
 
-from examples import Examples
 from FAdo.cfg import *
 from xeger import Xeger
+#from parsetree import*
+from parsetree_prune import*
 import time
 from torch.nn.utils.rnn import pad_sequence
 import torch
 
+
 LENGTH_LIMIT = 30
 EXAMPLE_LENGHT_LIMIT = 100
-
 
 def membership(regex, string):
     # print(regex)
     # print(regex, string)
-    # print(regex, string)
     return bool(re.fullmatch(regex, string))
-
 
 def membership2(regex, string):
     return str2regexp(regex).evalWordP(string)
-
 
 def tensor_to_regex(regex_tensor):
     word_index = {'pad': 0, '0': 1, '1': 2, '(': 3, ')': 4, '?': 5, '*': 6, '|': 7,
@@ -44,24 +41,13 @@ def tensor_to_regex(regex_tensor):
     return regex
 
 
-def gen_str():
-    str_list = []
-
-    for i in range(random.randrange(1, 7)):
-        if random.randrange(1, 3) == 1:
-            str_list.append('0')
-        else:
-            str_list.append('1')
-
-    return ''.join(str_list)
-
-
 def make_next_state(state, action, examples):
+
     copied_state = copy.deepcopy(state)
 
     success = False
 
-    if action == 0:
+    if action==0:
         spread_success = copied_state.spread(Character('0'))
     elif action == 1:
         spread_success = copied_state.spread(Character('1'))
@@ -79,14 +65,14 @@ def make_next_state(state, action, examples):
         reward = -100
         return copied_state, reward, done, success
 
-    # if repr(copied_state) in scanned:
+    #if repr(copied_state) in scanned:
     #    done = True
     #    reward = -1
     #    return copied_state, reward, done, success
 
+    # 항상 374line
     if is_pdead(copied_state, examples):
-        # print("pd",state)
-        # print(examples.getPos())
+        #print(examples.getPos())
         done = True
         reward = -100
         return copied_state, reward, done, success
@@ -169,44 +155,12 @@ def make_embeded(state, examples, padding=False):
 
     neg_example_tensor = torch.LongTensor(encoded)
 
-    # print(regex_tensor.shape, pos_example_tensor.shape, neg_example_tensor.shape)
-
     return regex_tensor, pos_example_tensor, neg_example_tensor
 
 
-def rand_example():
-    gen = reStringRGenerator(['0', '1'], random.randrange(3, 15), eps=None)
-    regex = gen.generate().replace('+', '|')
-    print(regex)
-
-    x = Xeger(limit=10)
-    pos_size = 10
-    pos_example = list()
-    for i in range(1000):
-        randStr = x.xeger(regex)
-        if len(randStr) <= 7 and randStr not in pos_example:
-            pos_example.append(randStr)
-            if len(pos_example) == 10:
-                break
-
-    neg_example = list()
-    for i in range(1000):
-        random_str = gen_str()
-        if not membership(regex, random_str) and random_str not in neg_example:
-            neg_example.append(random_str)
-            if len(neg_example) == 10:
-                break
-
-    examples = Examples(1)
-    examples.setPos(pos_example)
-    examples.setNeg(neg_example)
-
-    print(examples.getPos(), examples.getNeg())
-
-    return examples
-
 
 def is_solution(regex, examples, membership):
+
     if regex == '@emptyset':
         return False
 
@@ -220,6 +174,17 @@ def is_solution(regex, examples, membership):
 
     return True
 
+def is_overlap(s):
+    return s.overlap()
+
+def is_equivalent_KO(s):
+    return s.equivalent_KO(10)
+
+def is_orinclusive(s):
+    return s.orinclusive()
+
+def is_kinclusive(s):
+    return s.kinclusive()
 
 def is_pdead(s, examples):
     s_copy = copy.deepcopy(s)
@@ -232,11 +197,10 @@ def is_pdead(s, examples):
     for string in examples.getPos():
         if not membership(s, string):
             return True
-
     return False
 
-
 def is_ndead(s, examples):
+
     s_copy = copy.deepcopy(s)
     s_copy.spreadNp()
     s = repr(s_copy)
@@ -247,22 +211,12 @@ def is_ndead(s, examples):
     for string in examples.getNeg():
         if membership(s, string):
             return True
-
     return False
 
 
 def is_redundant(s, examples):
-    # unroll
-    '''# if there is #|# - infinite loop..
-    if '#|#' in repr(s):
-        unrolled_state = copy.deepcopy(s)
-    elif type(s.r) == type(KleenStar()):
-        unrolled_state = copy.deepcopy(s)
-        unrolled_state.unroll_entire()
-    else:
-        unrolled_state = copy.deepcopy(s)
-        unrolled_state.unroll()'''
 
+    #unroll
     if type(s.r) == type(KleenStar()):
         unrolled_state = copy.deepcopy(s)
         unrolled_state.unroll_entire()
@@ -270,40 +224,54 @@ def is_redundant(s, examples):
         unrolled_state = copy.deepcopy(s)
         unrolled_state.unroll()
 
-    # unrolled_state = copy.deepcopy(s)
 
-    # split
+    #unrolled_state = copy.deepcopy(s)
+
+
+    #split
     prev = [unrolled_state]
     next = []
 
+    exception = False
+
+    count = 0
     while prev:
-
+        count +=1
+        if count >=3000:
+            print("exception")
+            exception = True
+            print(s)
+            break
         t = prev.pop()
-
         if '|' in repr(t):
+            n = t.getn()
 
-            if type(t.r) == type(Or()):
-                s_left = RE(t.r.a)
-                s_right = RE(t.r.b)
+            if n == -1:
+                if type(t.r) == type(Or()):
+                    prev.append(RE())
+                else:
+                    t.split(-1)
+                    prev.append(t)
+
             else:
-                s_left = copy.deepcopy(t)
-                s_left.split(0)
-                s_right = t
-                s_right.split(1)
-
-            # deepcopy problem
-            prev.append(s_left)
-            prev.append(s_right)
+                for i in range(n):
+                    s_split = copy.deepcopy(t)
+                    s_split.split(i)
+                    prev.append(s_split)
 
         else:
             t.spreadAll()
             next.append(t)
-    # print(unrolled_state)
-    # unrolled_state.spreadAll()
-    # print(unrolled_state)
-    # next = [unrolled_state]
 
-    # check part
+
+    #unrolled_state.spreadAll()
+    #next = [unrolled_state]
+
+    if exception:
+        print("list ", next)
+        return False
+
+    #check part
     for state in next:
         count = 0
         for string in examples.getPos():
@@ -312,3 +280,10 @@ def is_redundant(s, examples):
         if count == 0:
             return True
     return False
+
+
+
+
+
+
+
