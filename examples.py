@@ -78,3 +78,7 @@ class Examples(object):
             self.pos.append(i)
         else:
             self.neg.append(i)
+    def nemptyset(self):
+        for neg in self.neg:
+            if neg == '':
+                return True

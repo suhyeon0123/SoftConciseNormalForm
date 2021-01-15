@@ -180,6 +180,10 @@ def is_overlap(s):
 def is_equivalent_KO(s):
     return s.equivalent_KO(10)
 
+def is_equivalent2(s):
+    return s.equivalent2()
+
+
 def is_orinclusive(s):
     return s.orinclusive()
 
@@ -200,17 +204,23 @@ def is_pdead(s, examples):
     return False
 
 def is_ndead(s, examples):
-
+    ss = copy.deepcopy(s)
     s_copy = copy.deepcopy(s)
     s_copy.spreadNp()
     s = repr(s_copy)
-
+    #print(s)
     if s == '@emptyset':
+        #print("not dead by blank", ss)
         return False
 
     for string in examples.getNeg():
-        if membership(s, string):
+        if string == '' and membership(s, string):
+            #print("dead by blank", ss)
             return True
+        elif membership(s, string):
+            #print("not dead by blank", ss)
+            return True
+    #print("not dead by blank", ss)
     return False
 
 
@@ -268,7 +278,7 @@ def is_redundant(s, examples):
     #next = [unrolled_state]
 
     if exception:
-        print("list ", next)
+        #print("list ", next)
         return False
 
     #check part
@@ -281,9 +291,72 @@ def is_redundant(s, examples):
             return True
     return False
 
+def is_unroll(s, examples):
 
+    if type(s.r) == type(KleenStar()):
+        unrolled_state = copy.deepcopy(s)
+        unrolled_state.unroll_entire()
+    else:
+        unrolled_state = copy.deepcopy(s)
+        unrolled_state.unroll()
 
+    unrolled_state.spreadAll()
 
+    for string in examples.getPos():
+        if membership(repr(unrolled_state), string):
+            return False
+    return True
 
+def is_split(s, examples):
+
+    s = copy.deepcopy(s)
+
+    prev = [s]
+    next = []
+
+    exception = False
+
+    count = 0
+    while prev:
+        count +=1
+        if count >=3000:
+            print("exception")
+            exception = True
+            #print(s)
+            break
+        t = prev.pop()
+        if '|' in repr(t):
+            n = t.getn()
+
+            if n == -1:
+                if type(t.r) == type(Or()):
+                    prev.append(RE())
+                else:
+                    t.split(-1)
+                    prev.append(t)
+
+            else:
+                for i in range(n):
+                    s_split = copy.deepcopy(t)
+                    s_split.split(i)
+                    prev.append(s_split)
+
+        else:
+            t.spreadAll()
+            next.append(t)
+
+    if exception:
+        #print("list ", next)
+        return False
+
+    #check part
+    for state in next:
+        count = 0
+        for string in examples.getPos():
+            if membership(repr(state), string):
+                count = count + 1
+        if count == 0:
+            return True
+    return False
 
 

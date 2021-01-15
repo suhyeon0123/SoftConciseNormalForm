@@ -13,7 +13,7 @@ def get_rand_re(depth):
     else:
         cha = False
 
-    if cha :
+    if cha:
         case = random.randrange(0,2)
         if case == 0:
             return Character('0')
@@ -31,7 +31,6 @@ def get_rand_re(depth):
             return Question()
         else:
             return Hole()
-
 
 class Hole:
     def __init__(self):
@@ -63,6 +62,8 @@ class Hole:
     def orinclusive(self):
         return False
     def kinclusive(self):
+        return False
+    def equivalent2(self):
         return False
 
 
@@ -157,6 +158,8 @@ class RE:
         return self.r.orinclusive()
     def kinclusive(self):
         return self.r.kinclusive()
+    def equivalent2(self):
+        return self.r.equivalent2()
 
 class Epsilon(RE):
     def __init__(self):
@@ -188,6 +191,8 @@ class Epsilon(RE):
     def orinclusive(self):
         return False
     def kinclusive(self):
+        return False
+    def equivalent2(self):
         return False
 
 class EpsilonBlank(RE):
@@ -221,6 +226,8 @@ class EpsilonBlank(RE):
         return False
     def kinclusive(self):
         return False
+    def equivalent2(self):
+        return False
 
 class Character(RE):
     def __init__(self, c):
@@ -253,6 +260,8 @@ class Character(RE):
     def orinclusive(self):
         return False
     def kinclusive(self):
+        return False
+    def equivalent2(self):
         return False
 
 class KleenStar(RE):
@@ -374,6 +383,7 @@ class KleenStar(RE):
                         return True
                 if regex.kinclusive():
                     return True
+
         if type(self.r) == type(Concatenate()):
             if '(0|1)*' in repr(self.r):
                 return True
@@ -390,8 +400,20 @@ class KleenStar(RE):
                             if count == len(self.r.list):
                                 print('type2')
                                 return True'''
+    def equivalent2(self):
+        #탐색 시간이 굉장히 오래걸리는 문제
+        '''if type(self.r) == type(Concatenate()):
+            for concatElement in self.r.list:
+                if type(concatElement) == type(Or()):
+                    for orElement in concatElement.list:
+                        if type(orElement) == type(KleenStar()) and type(orElement.r) == type(Character('0')):
+                            return True'''
 
+        if ('(0|00)' or '(1|11)' or '1(0+1*)' or '0(0*+1)' or '1(0*+1)' or '0(0+1*)') in repr(self.r):
 
+            return True
+        else:
+            return False
 
 
 
@@ -490,6 +512,8 @@ class Question(RE):
         return self.r.orinclusive()
     def kinclusive(self):
         return self.r.kinclusive()
+    def equivalent2(self):
+        return self.r.equivalent2()
 
 class Concatenate(RE):
     def __init__(self, *regexs):
@@ -639,6 +663,8 @@ class Concatenate(RE):
         return any(list(i.orinclusive() for i in self.list))
     def kinclusive(self):
         return any(list(i.kinclusive() for i in self.list))
+    def equivalent2(self):
+        return any(list(i.equivalent2() for i in self.list))
 
 class Or(RE):
     def __init__(self, a=Hole(), b=Hole()):
@@ -764,7 +790,6 @@ class Or(RE):
         return any(list(i.equivalent_KO(2) for i in self.list))
 
 
-
     def getn(self):
         for regex in self.list:
             if type(regex) == type(Hole()):
@@ -805,13 +830,14 @@ class Or(RE):
                                 #print("type3")
                                 return True
 
-
             if regex.orinclusive():
                 return True
 
         return False
     def kinclusive(self):
         return any(list(i.kinclusive() for i in self.list))
+    def equivalent2(self):
+        return any(list(i.equivalent2() for i in self.list))
 
 
 

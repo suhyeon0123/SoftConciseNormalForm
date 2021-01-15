@@ -56,7 +56,9 @@ while not w.empty() and not finished:
 
             k = copy.deepcopy(s)
 
-            if not k.spread(new_elem,10):
+            if i ==0 and examples.nemptyset() and type(new_elem)==type(KleenStar()):
+                continue
+            elif not k.spread(new_elem,10):
                 continue
 
             traversed += 1
@@ -68,33 +70,39 @@ while not w.empty() and not finished:
                 scanned.add(repr(k))
 
 
-            if is_pdead(k, examples):
+            if type(new_elem)==type(Character('0')) and is_pdead(k, examples):
                 #print(repr(k), "is pdead")
                 continue
 
-            if is_ndead(k, examples):
+            if (type(new_elem)==type(Character('0')) or type(new_elem)==type(KleenStar()) or type(new_elem)==type(Question())) and is_ndead(k, examples):
                 #print(repr(k), "is ndead")
                 continue
 
-            if is_overlap(k):
-                #print(repr(k), "is overlap")
+            if type(new_elem)==type(Character('0')):
+                if is_overlap(k):
+                    #print(repr(k), "is overlap")
+                    continue
+
+                if is_orinclusive(k):
+                    #print(repr(k), "is orinclusive")
+                    continue
+
+                if is_kinclusive(k):
+                    #print(repr(k), "is kinclusive")
+                    continue
+
+                if is_equivalent_KO(k):
+                    print(repr(k), "is equivalent_KO")
+                    continue
+
+                '''if is_equivalent2(k):
+                    print(repr(k), "is equivalent2")
+                    continue'''
+
+            if is_redundant(k, examples):
+                #print(repr(k), "is redundant")
                 continue
 
-            if is_orinclusive(k):
-                 #print(repr(k), "is orinclusive")
-                 continue
-
-            if is_kinclusive(k):
-                 print(repr(k), "is kinclusive")
-                 continue
-
-            if is_redundant(k,examples):
-                print(repr(k), "is redundant")
-                continue
-
-            if is_equivalent_KO(k):
-                #print(repr(k), "is equivalent_KO")
-                continue
 
             #print(k)
             if not k.hasHole():
