@@ -48,17 +48,19 @@ while not w.empty() and not finished:
     prevCost = cost
     hasHole = s.hasHole()
 
-    if hasHole :
+    #print("state : ", s, " cost: ",cost)
+    if hasHole:
 
-        for j, new_elem in enumerate([Character('0'), Character('1'), Or(), Concatenate(Hole(),Hole()), KleenStar()]):
+        for j, new_elem in enumerate([Character('0'), Character('1'), Or(), Concatenate(Hole(),Hole()), KleenStar(), Question()]):
 
             #print(repr(s), repr(new_elem))
 
             k = copy.deepcopy(s)
 
-            if i ==0 and examples.nemptyset() and type(new_elem)==type(KleenStar()):
+            if i ==0 and type(new_elem)==type(Question()):
                 continue
             elif not k.spread(new_elem,10):
+                #print("false")
                 continue
 
             traversed += 1
@@ -78,6 +80,7 @@ while not w.empty() and not finished:
                 #print(repr(k), "is ndead")
                 continue
 
+
             if type(new_elem)==type(Character('0')):
                 if is_overlap(k):
                     #print(repr(k), "is overlap")
@@ -87,21 +90,25 @@ while not w.empty() and not finished:
                     #print(repr(k), "is orinclusive")
                     continue
 
+                if is_equivalent_K(k):
+                    #print(repr(k), "is equivalent_KO")
+                    continue
+
                 if is_kinclusive(k):
                     #print(repr(k), "is kinclusive")
                     continue
 
-                if is_equivalent_KO(k):
-                    print(repr(k), "is equivalent_KO")
+                if k.equivalent_concat():
+                    #print(repr(k), "is equivalent_concat")
                     continue
 
-                '''if is_equivalent2(k):
-                    print(repr(k), "is equivalent2")
-                    continue'''
+                if k.equivalent_QCK():
+                    #print(repr(k), "is equivalent_QCK")
+                    continue
 
-            if is_redundant(k, examples):
-                #print(repr(k), "is redundant")
-                continue
+                if is_new_redundant(k, examples):
+                    #print(repr(k), "is redundant")
+                    continue
 
 
             #print(k)
@@ -114,7 +121,6 @@ while not w.empty() and not finished:
                     print("Result RE:", repr(k))
                     finished = True
                     break
-
 
             w.put((k.cost, k))
 

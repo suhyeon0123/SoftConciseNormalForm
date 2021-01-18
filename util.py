@@ -17,7 +17,7 @@ EXAMPLE_LENGHT_LIMIT = 100
 
 def membership(regex, string):
     # print(regex)
-    # print(regex, string)
+    #print(regex, string)
     return bool(re.fullmatch(regex, string))
 
 def membership2(regex, string):
@@ -177,8 +177,8 @@ def is_solution(regex, examples, membership):
 def is_overlap(s):
     return s.overlap()
 
-def is_equivalent_KO(s):
-    return s.equivalent_KO(10)
+def is_equivalent_K(s):
+    return s.equivalent_K()
 
 def is_equivalent2(s):
     return s.equivalent2()
@@ -253,9 +253,8 @@ def is_redundant(s, examples):
             print(s)
             break
         t = prev.pop()
-        if '|' in repr(t):
+        if ('|' or '?') in repr(t):
             n = t.getn()
-
             if n == -1:
                 if type(t.r) == type(Or()):
                     prev.append(RE())
@@ -288,11 +287,13 @@ def is_redundant(s, examples):
             if membership(repr(state), string):
                 count = count + 1
         if count == 0:
+            #print(next)
             return True
     return False
 
-def is_unroll(s, examples):
+def is_new_redundant(s, examples):
 
+    #unroll
     if type(s.r) == type(KleenStar()):
         unrolled_state = copy.deepcopy(s)
         unrolled_state.unroll_entire()
@@ -300,18 +301,11 @@ def is_unroll(s, examples):
         unrolled_state = copy.deepcopy(s)
         unrolled_state.unroll()
 
-    unrolled_state.spreadAll()
+    #unrolled_state = copy.deepcopy(s)
 
-    for string in examples.getPos():
-        if membership(repr(unrolled_state), string):
-            return False
-    return True
 
-def is_split(s, examples):
-
-    s = copy.deepcopy(s)
-
-    prev = [s]
+    #split
+    prev = [unrolled_state]
     next = []
 
     exception = False
@@ -322,28 +316,23 @@ def is_split(s, examples):
         if count >=3000:
             print("exception")
             exception = True
-            #print(s)
+            print(s)
             break
         t = prev.pop()
-        if '|' in repr(t):
+
+        if '|' in repr(t) or '?' in repr(t):
             n = t.getn()
-
-            if n == -1:
-                if type(t.r) == type(Or()):
-                    prev.append(RE())
-                else:
-                    t.split(-1)
-                    prev.append(t)
-
-            else:
-                for i in range(n):
-                    s_split = copy.deepcopy(t)
-                    s_split.split(i)
+            for i in range(n):
+                s_split = copy.deepcopy(t)
+                if s_split.split(i)==1:
                     prev.append(s_split)
 
         else:
             t.spreadAll()
             next.append(t)
+
+    #unrolled_state.spreadAll()
+    #next = [unrolled_state]
 
     if exception:
         #print("list ", next)
@@ -356,6 +345,7 @@ def is_split(s, examples):
             if membership(repr(state), string):
                 count = count + 1
         if count == 0:
+            #print(next)
             return True
     return False
 
