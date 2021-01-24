@@ -6,7 +6,7 @@ from config import *
 
 def get_rand_re(depth):
 
-    case = random.randrange(0,2+depth)
+    case = random.randrange(0,depth)
 
     if case > 2:
         cha = True
@@ -24,10 +24,10 @@ def get_rand_re(depth):
         if case <= 0:
             return Or()
         elif case <= 1:
-            return Concatenate(Hole(),Hole())
+            return Concatenate(Hole(), Hole())
         elif case <= 2:
             return KleenStar()
-        elif case <= 3:
+        elif case <= 3 and depth != 1:
             return Question()
         else:
             return Hole()
@@ -68,6 +68,10 @@ class Hole:
     def equivalent_concat(self):
         return False
     def equivalent_QCK(self):
+        return False
+    def kok(self):
+        return False
+    def or_concat(self):
         return False
 
 
@@ -163,12 +167,13 @@ class RE:
                 return 1
             return 2
 
+
         return self.r.split(side)
     def make_child(self, count):
         if type(self.r) == type((Hole())):
             self.r = get_rand_re(count)
         else:
-            self.r.make_child(count)
+            self.r.make_child(count+1)
     def overlap(self):
         return self.r.overlap()
     def equivalent_K(self):
@@ -185,6 +190,10 @@ class RE:
         return self.r.equivalent_concat()
     def equivalent_QCK(self):
         return self.r.equivalent_QCK()
+    def kok(self):
+        return self.r.kok()
+    def or_concat(self):
+        return self.r.or_concat()
 
 class Epsilon(RE):
     def __init__(self):
@@ -222,6 +231,10 @@ class Epsilon(RE):
     def equivalent_concat(self):
         return False
     def equivalent_QCK(self):
+        return False
+    def kok(self):
+        return False
+    def or_concat(self):
         return False
 
 class EpsilonBlank(RE):
@@ -261,6 +274,9 @@ class EpsilonBlank(RE):
         return False
     def equivalent_QCK(self):
         return False
+    def kok(self):
+        return False
+
 
 class Character(RE):
     def __init__(self, c):
@@ -299,6 +315,8 @@ class Character(RE):
     def equivalent_concat(self):
         return False
     def equivalent_QCK(self):
+        return False
+    def kok(self):
         return False
 
 class KleenStar(RE):
@@ -374,7 +392,7 @@ class KleenStar(RE):
 
         if type(self.r) == type(Or()):
             if repr(self.r.list[side]) != '#':
-                if type(self.r.list[side]) == type(KleenStar()):
+                if type(self.r.list[side]) == type(KleenStar()) or type(self.r.list[side]) == type(Question()):
                     self.r = copy.deepcopy(self.r.list[side].r)
                 else:
                     self.r = copy.deepcopy(self.r.list[side])
@@ -391,19 +409,23 @@ class KleenStar(RE):
                     self.r = x
                     break
         else:
-            self.r.make_child(count)
+            self.r.make_child(count+1)
 
     def overlap(self):
         return self.r.overlap()
 
     def equivalent_K(self):
-        if type(self.r)!= type(Character('0')) and type(self.r)!= type(Hole()):
+        if not self.hasHole() and repr(self.r) != '1|0':
+            return bool(re.fullmatch(repr(self.r), '0')) and bool(re.fullmatch(repr(self.r), '1'))
+
+        if type(self.r)== type(Concatenate('0')):
             for regex in self.r.list:
                 if type(regex)==type(KleenStar()) and bool(re.fullmatch(repr(regex.r), '0')) and bool(re.fullmatch(repr(regex.r), '1')):
                     return True
-        if not self.hasHole() and repr(self.r) != '1|0':
-            return bool(re.fullmatch(repr(self.r), '0')) and bool(re.fullmatch(repr(self.r), '1'))
+
         return self.r.equivalent_K()
+
+
 
     def getn(self):
         return self.r.getn()
@@ -429,7 +451,7 @@ class KleenStar(RE):
                     if count == len(self.r.list):
                         return True
 
-        if type(self.r) == type(Or()):
+        elif type(self.r) == type(Or()):
             for regex in self.r.list:
                 if type(regex) == type(Concatenate()):
                     for regex2 in regex.list:
@@ -438,8 +460,8 @@ class KleenStar(RE):
                             for regex3 in regex.list:
                                 if repr(regex2.r) == repr(regex3) or repr(regex2)==repr(regex3):
                                     count+=1
-                            if count == len(self.r.list):
-                                print('type2')
+                            if count == len(regex.list):
+                                #print('type2')
                                 return True
 
                         if type(regex2) == type(Question()) and not regex2.hasHole():
@@ -447,8 +469,8 @@ class KleenStar(RE):
                             for regex3 in regex.list:
                                 if repr(regex2.r) == repr(regex3) or repr(regex2)==repr(regex3):
                                     count+=1
-                            if count == len(self.r.list):
-                                print('type3')
+                            if count == len(regex.list):
+                                #print('type3')
                                 return True
 
         return self.r.kinclusive()
@@ -464,7 +486,13 @@ class KleenStar(RE):
         return self.r.equivalent_concat()
     def equivalent_QCK(self):
         return self.r.equivalent_QCK()
+    def kok(self):
+        if type(self.r)==type(Or()):
+            for regex in self.r.list:
+                if type(regex) == type(KleenStar()) or type(regex) == type(Question()):
+                    return True
 
+        return self.r.kok()
 
 
 
@@ -541,7 +569,18 @@ class Question(RE):
         self.r.unroll()
 
     def split(self, side):
-        return
+        self.string = None
+
+        if type(self.r) == type(Or()):
+            if repr(self.r.list[side]) != '#':
+                if type(self.r.list[side]) == type(KleenStar()) or type(self.r.list[side]) == type(Question()):
+                    self.r = copy.deepcopy(self.r.list[side].r)
+                else:
+                    self.r = copy.deepcopy(self.r.list[side])
+                return 1
+            return 2
+
+        return self.r.split(side)
 
     def make_child(self, count):
         if type(self.r) == type((Hole())) :
@@ -551,7 +590,7 @@ class Question(RE):
                     self.r = x
                     break
         else:
-            self.r.make_child(count)
+            self.r.make_child(count+1)
     def overlap(self):
         return self.r.overlap()
     def equivalent_K(self):
@@ -567,22 +606,35 @@ class Question(RE):
     def equivalent_concat(self):
         return self.r.equivalent_concat()
     def equivalent_QCK(self):
-        #2개 일때만 적용된다.
+        #Q안에 x*, x?, x중 두개의 regex가 concat되어있을때
         if type(self.r) == type(Concatenate()) and len(self.r.list) == 2:
-            if type(self.r.list[0]) == type(KleenStar()) and not self.r.list[0].hasHole() and repr(self.r.list[0].r) == repr(self.r.list[1]):
-                return True
-            if type(self.r.list[1]) == type(KleenStar()) and not self.r.list[1].hasHole() and repr(self.r.list[1].r) == repr(self.r.list[0]):
-                return True
+            if (type(self.r.list[0]) == type(KleenStar()) or type(self.r.list[0]) == type(Question()) ) and not self.r.list[0].hasHole():
+                if repr(self.r.list[0].r) == repr(self.r.list[1]):
+                    return True
+            if (type(self.r.list[1]) == type(KleenStar()) or type(self.r.list[1]) == type(Question()) )and not self.r.list[1].hasHole():
+                if repr(self.r.list[1].r) == repr(self.r.list[0]):
+                    return True
 
+        #QC에 모든 x가 kleene이거나, 모든 x가 Q일때
         if type(self.r) ==type(Concatenate()):
             count = 0
+            count2 = 0
             for regex in self.r.list:
                 if type(regex)==type(KleenStar()):
                     count +=1
-            if count == len(self.r.list):
+                if type(regex)==type(Question()):
+                    count2 +=1
+            if count == len(self.r.list) or count2 == len(self.r.list):
                 return True
 
         return self.r.equivalent_QCK()
+    def kok(self):
+        if type(self.r) == type(Or()):
+            for regex in self.r.list:
+                if type(regex) == type(KleenStar()) or type(regex) == type(Question()):
+                    return True
+
+        return self.r.kok()
 
 class Concatenate(RE):
     def __init__(self, *regexs):
@@ -592,6 +644,7 @@ class Concatenate(RE):
         self.level = 2
         self.string = None
         self.hasHole2 = True
+        self.checksum = 0
 
     def __repr__(self):
         if self.string:
@@ -629,9 +682,13 @@ class Concatenate(RE):
                 self.list.append(Hole())
                 return True
             elif type(regex) == type(Hole()):
+                if type(case) == type(Character('0')):
+                    self.checksum = index
                 self.list[index] = case
                 return True
             if self.list[index].spread(case, 2):
+                if not self.list[index].hasHole():
+                    self.checksum = index
                 return True
 
         return False
@@ -646,14 +703,12 @@ class Concatenate(RE):
 
     def spreadRand(self):
         self.string = None
-        if type(self.a) == type((Hole())):
-            self.a = Character('0') if random.random() <0.5 else Character('1')
-        else:
-            self.a.spreadRand()
-        if type(self.b) == type((Hole())):
-            self.b = Character('0') if random.random() <0.5 else Character('1')
-        else:
-            self.b.spreadRand()
+        self.string = None
+        for index, regex in enumerate(self.list):
+            if type(regex) == type((Hole())):
+                self.list[index] = Character('0') if random.random() < 0.5 else Character('1')
+            else:
+                self.list[index].spreadRand()
 
     def spreadNp(self):
         self.string = None
@@ -666,7 +721,7 @@ class Concatenate(RE):
     def unroll(self):
         self.string = None
         for index, regex in enumerate(self.list):
-            if type(regex) == type(KleenStar()) and not regex.hasHole():
+            if type(regex) == type(KleenStar()) and type(regex.r) != type(Hole()):
                 a = copy.deepcopy(regex.r)
                 b = copy.deepcopy(regex.r)
                 c = copy.deepcopy(regex)
@@ -684,12 +739,17 @@ class Concatenate(RE):
             if type(regex) == type(Or()):
                 if repr(regex.list[side]) != '#':
                     self.list[index] = copy.deepcopy(self.list[index].list[side])
+                    #self.list[index] = regex.list[side]
                     return 1
                 return 2
 
             elif type(regex) == type(Question()):
                 if side == 0:
-                    self.list[index] = copy.deepcopy(self.list[index].r)
+                    if repr(regex.r) != '#':
+                        self.list[index] = copy.deepcopy(self.list[index].r)
+                        #self.list[index] = regex.r
+                    else:
+                        return 2
                 else:
                     self.list[index] = Epsilon()
                 return 1
@@ -702,15 +762,12 @@ class Concatenate(RE):
         return 3
 
     def make_child(self, count):
-        if type(self.a) == type((Hole())):
-            self.a = get_rand_re(count)
-        else:
-            self.a.make_child(count)
+        for index, regex in enumerate(self.list):
+            if type(regex) == type((Hole())):
+                self.list[index] = get_rand_re(count)
+            else:
+                self.list[index].make_child(count + 1)
 
-        if type(self.b) == type((Hole())):
-            self.b = get_rand_re(count)
-        else:
-            self.b.make_child(count)
     def overlap(self):
         return any(list(i.overlap() for i in self.list))
     def equivalent_K(self):
@@ -732,20 +789,45 @@ class Concatenate(RE):
     def singlesymbol(self):
         return any(list(i.singlesymbol() for i in self.list))
     def equivalent_concat(self):
+        if self.checksum != 0:
+            if (not (type(self.list[self.checksum-1]) == type(Question()) and type(self.list[self.checksum]) == type(Question()) ) and type(self.list[self.checksum-1]) == type(Question()) ) or type(self.list[self.checksum-1]) == type(KleenStar()):
+                if type(self.list[self.checksum]) == type(KleenStar()) or type(self.list[self.checksum]) == type(Question()):
+                    if repr(self.list[self.checksum-1].r) == repr(self.list[self.checksum].r):
+                        self.checksum = 0
+                        return True
+                else:
+                    if repr(self.list[self.checksum - 1].r) == repr(self.list[self.checksum]):
+                        self.checksum = 0
+                        return True
+
+
+
+        return any(list(i.equivalent_concat() for i in self.list))
+
+
+        '''#sort by [none, Question(), Kleene()]
+        for index, regex in enumerate(self.list):
+            if index != len(self.list)-1:
+                if not self.list[index+1].hasHole():
+                    if (type(self.list[index]) != type(KleenStar()) or type(self.list[index]) != type(Question()) )  and (type(self.list[index+1]) == type(KleenStar()) or type(self.list[index+1]) == type(Question()) ) and repr(self.list[index]) == repr(self.list[index + 1].r):
+                        return True
+                    elif type(self.list[index]) == type(Question())  and type(self.list[index+1]) == type(KleenStar()) and repr(self.list[index].r) == repr(self.list[index + 1].r):
+                        return True
+
         for index, regex in enumerate(self.list):
             if index != len(self.list)-1:
                 if type(regex) == type(KleenStar()) and not regex.hasHole() and repr(regex) == repr(self.list[index + 1]):
-                    return True
-                if type(regex) == type(KleenStar()) and not regex.hasHole() and type(self.list[index+1]) == type(Question()) and repr(regex.r) == repr(self.list[index + 1].r):
                     return True
                 if type(regex) == type(Question()) and not regex.hasHole() and type(self.list[index + 1]) == type(KleenStar()) and repr(regex.r) == repr(self.list[index + 1].r):
                     return True
 
             if self.list[index].equivalent_concat():
                 return True
-        return False
+        return False'''
     def equivalent_QCK(self):
         return any(list(i.equivalent_QCK() for i in self.list))
+    def kok(self):
+        return any(list(i.kok() for i in self.list))
 
 
 
@@ -790,13 +872,12 @@ class Or(RE):
 
     def spread(self, case, parentId):
         self.string = None
-
         for index, regex in enumerate(self.list):
-            if type(regex) == type((Hole())) and type(case)==type(Or()):
+            if type(regex) == type(Hole()) and type(case)==type(Or()):
                 self.list.append(Hole())
                 self.list.sort(key=lambda regex: '!' if repr(regex) == '#' else ('#' if regex.hasHole() else repr(regex)), reverse=True)
                 return True
-            elif type(regex)==type((Hole())) and not type(case)==type(Question()) and not (parentId == 0 and type(case) == type(KleenStar())):
+            elif type(regex)==type((Hole())):
                 self.list[index] = case
                 self.list.sort(key=lambda regex: '!' if repr(regex) == '#' else ('#' if regex.hasHole() else repr(regex)), reverse=True)
                 return True
@@ -822,22 +903,24 @@ class Or(RE):
                 self.list[index].spreadNp()
     def spreadRand(self):
         self.string = None
-        if type(self.a) == type((Hole())):
-            self.a = Character('0') if random.random() <0.5 else Character('1')
-        else:
-            self.a.spreadRand()
-        if type(self.b) == type((Hole())):
-            self.a = Character('0') if random.random() <0.5 else Character('1')
-        else:
-            self.b.spreadRand()
+        for index, regex in enumerate(self.list):
+            if type(regex) == type((Hole())):
+                self.list[index] = Character('0') if random.random() < 0.5 else Character('1')
+            else:
+                self.list[index].spreadRand()
 
     def unroll(self):
+
         self.string = None
         for index, regex in enumerate(self.list):
-            if type(regex) == type(KleenStar()) and not regex.hasHole():
-                self.list[index] = Concatenate(regex.r, regex.r, KleenStar(regex.r))
-                for index2, regex2 in enumerate(self.list[index].list):
-                    self.list[index].list[index2].unroll()
+            if type(regex) == type(KleenStar()) and type(regex.r)!=type(Hole()):
+                a = copy.deepcopy(regex.r)
+                b = copy.deepcopy(regex.r)
+                c = copy.deepcopy(regex)
+                self.list[index] = Concatenate(a, b, c)
+                self.list[index].list[0].unroll()
+                self.list[index].list[1].unroll()
+                self.list[index].list[2].r.unroll()
             else:
                 self.list[index].unroll()
 
@@ -845,15 +928,11 @@ class Or(RE):
         return
 
     def make_child(self, count):
-        if type(self.a) == type((Hole())):
-            self.a = get_rand_re(count)
-        else:
-            self.a.make_child(count)
-
-        if type(self.b) == type((Hole())):
-            self.b = get_rand_re(count)
-        else:
-            self.b.make_child(count)
+        for index, regex in enumerate(self.list):
+            if type(regex) == type((Hole())):
+                self.list[index] = get_rand_re(count)
+            else:
+                self.list[index].make_child(count + 1)
 
     def overlap(self):
         noholelist = []
@@ -861,7 +940,6 @@ class Or(RE):
             if not regex.hasHole():
                 noholelist.append(repr(regex))
         noholeset = set(noholelist)
-        #print(noholelist,"  ",noholeset)
         if len(noholelist) != len(noholeset):
             return True
 
@@ -881,7 +959,7 @@ class Or(RE):
         single0 = False
         single1 = False
 
-        for regex in self.list:
+        for index, regex in enumerate(self.list):
 
             if not regex.hasHole():
                 if '0' not in repr(regex):
@@ -899,20 +977,36 @@ class Or(RE):
                 for regex2 in self.list:
 
                     if repr(regex.r) == repr(regex2):
-                        #print("type1")
+                        return True
+                    if type(regex2) == type(Question()) and repr(regex.r) == repr(regex2.r):
                         return True
 
-                    # 0101+(01)*+ 를 구현하려고 함..
-                    if type(regex2) == type(Concatenate()):
-                        pass
+                    # 0101+(01)* 를 구현하려고 함..
+                    '''if type(regex2) == type(Concatenate()):
+                        pass'''
+
+            if type(regex) == type(Question()) and not regex.hasHole():
+                for regex2 in self.list:
+                    if repr(regex.r) == repr(regex2):
+                        return True
 
             if type(regex) == type(KleenStar()) and type(regex.r) == type(Or()):
-                for inconcat in regex.r.list:
-                    if not inconcat.hasHole():
+                for inor in regex.r.list:
+                    if not inor.hasHole():
                         for x in self.list:
-                            if repr(x) == repr(inconcat):
-                                #print("aa")
+                            if repr(x) == repr(inor):
+                                #print('x')
                                 return True
+
+
+            #Or-Concat 결합법칙
+            if type(regex) == type(Concatenate()):
+                for index2, regex2 in enumerate(self.list):
+                    if index < index2 and type(regex2) == type(Concatenate()):
+                        if repr(regex.list[0]) == repr(regex2.list[0]):
+                            return True
+                        if repr(regex.list[len(regex.list)-1]) == repr(regex2.list[len(regex2.list)-1]):
+                            return True
 
             if regex.orinclusive():
                 return True
@@ -926,6 +1020,11 @@ class Or(RE):
         return any(list(i.equivalent_concat() for i in self.list))
     def equivalent_QCK(self):
         return any(list(i.equivalent_QCK() for i in self.list))
+    def kok(self):
+        return any(list(i.kok() for i in self.list))
+
+
+
 
 
 

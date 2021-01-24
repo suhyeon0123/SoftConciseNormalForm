@@ -314,9 +314,9 @@ def is_new_redundant(s, examples):
     while prev:
         count +=1
         if count >=3000:
-            print("exception")
+            #print("exception")
             exception = True
-            print(s)
+            #print(s)
             break
         t = prev.pop()
 
@@ -336,7 +336,7 @@ def is_new_redundant(s, examples):
 
     if exception:
         #print("list ", next)
-        return False
+        return True
 
     #check part
     for state in next:
