@@ -61,6 +61,34 @@ class Examples(object):
 
         return pos, neg, description.strip()
 
+    def readFromFile2(self, no):
+        target_name = "no" + str(no)+".txt"
+        for file_name in os.listdir("./rand_benchmarks"):
+            if fnmatch.fnmatch(file_name, target_name):
+                f = open("./rand_benchmarks/" + file_name, 'r')
+
+        lines = f.readlines()
+        description = ''
+        index = 0
+        pos = []
+        neg = []
+
+        while lines[index].strip() != '++':
+            description += lines[index].strip() + ' '
+            index += 1
+
+        index += 1
+        while lines[index].strip() != '--':
+            pos.append(lines[index].strip())
+            index += 1
+
+        index += 1
+        while index < len(lines):
+            neg.append(lines[index].strip())
+            index += 1
+
+        return pos, neg, description.strip()
+
     def make_examples(self, simple, is_pos):
 
         for i in simple:

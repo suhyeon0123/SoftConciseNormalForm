@@ -51,15 +51,15 @@ while not w.empty() and not finished:
     #print("state : ", s, " cost: ",cost)
     if hasHole:
 
-        for j, new_elem in enumerate([Character('0'), Character('1'), Or(), Concatenate(Hole(),Hole()), KleenStar(), Question()]):
+        for j, new_elem in enumerate([Character('0'), Character('1'), Or(),  Or(Character('0'),Character('1')),Concatenate(Hole(),Hole()), KleenStar(),Question()]):
 
             #print(repr(s), repr(new_elem))
 
             k = copy.deepcopy(s)
 
-            if i ==0 and type(new_elem)==type(Question()):
+            if i ==0 and (type(new_elem)==type(Question())):
                 continue
-            elif not k.spread(new_elem,10):
+            elif not k.spread(new_elem):
                 #print("false")
                 continue
 
@@ -71,6 +71,13 @@ while not w.empty() and not finished:
             else:
                 scanned.add(repr(k))
 
+            '''if star_normal_form(k):
+                print(repr(k), "star_normal_form")
+                continue'''
+
+            if (type(new_elem) == type(KleenStar()) or type(new_elem) == type(Question())) and k.kok():
+                #print(repr(k), "is kok")
+                continue
 
             if type(new_elem)==type(Character('0')) and is_pdead(k, examples):
                 #print(repr(k), "is pdead")
@@ -106,9 +113,10 @@ while not w.empty() and not finished:
                     #print(repr(k), "is equivalent_QCK")
                     continue
 
-                if is_new_redundant(k, examples):
+                if is_new_redundant2(k, examples):
                     #print(repr(k), "is redundant")
                     continue
+
 
 
             #print(k)

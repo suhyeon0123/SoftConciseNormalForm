@@ -349,4 +349,45 @@ def is_new_redundant(s, examples):
             return True
     return False
 
+def is_new_redundant2(s, examples):
+
+    #unroll
+    unrolled_state = copy.deepcopy(s)
+    unrolled_state.unroll2()
+
+    #unrolled_state = copy.deepcopy(s)
+
+
+    #split
+    split = unrolled_state.split2()
+    list(map(lambda x: x.spreadAll(), split))
+    split = list(map(repr, split))
+    splitset = set(split)
+    split = list(splitset)
+
+
+    #check part
+    for state in split:
+        count = 0
+        for string in examples.getPos():
+            if membership(state, string):
+                count = count + 1
+        if count == 0:
+            #print(next)
+            return True
+    return False
+
+def star_normal_form(s):
+    origin = repr(s)
+    norm = RE(Black(copy.deepcopy(s).r))
+
+    for i in range(0,50):
+        norm.removeWhite()
+        norm.removeBlack()
+    print(repr(norm))
+    if origin != repr(norm):
+        return True
+    return False
+
+
 

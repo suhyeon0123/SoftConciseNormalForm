@@ -39,7 +39,7 @@ class Hole:
         return '#'
     def hasHole(self):
         return True
-    def spread(self, case, parentId):
+    def spread(self, case):
         return False
     def spreadAll(self):
         return KleenStar(Or(Character('0'), Character('1')))
@@ -73,6 +73,30 @@ class Hole:
         return False
     def or_concat(self):
         return False
+    def removeWhite(self):
+        return
+    def removeBlack(self):
+        return
+    def split2(self):
+        return [Hole()]
+
+
+class White:
+    def __init__(self,r = Hole()):
+        self.r = r
+    def removeWhite(self):
+        return self.r.removeWhite()
+    def removeBlack(self):
+        return self.r.removeBlack()
+
+class Black:
+    def __init__(self,r = Hole()):
+        self.r = r
+    def removeWhite(self):
+        return self.r.removeWhite()
+    def removeBlack(self):
+        return self.r.removeBlack()
+
 
 
 class RE:
@@ -98,7 +122,7 @@ class RE:
         if not self.r.hasHole():
             self.hasHole2 = False
         return self.hasHole2
-    def spread(self, case, parentId):
+    def spread(self, case):
 
         if type(case) != type(Character('0')):
             if type(case) == type(self.lastRE):
@@ -127,7 +151,7 @@ class RE:
             self.lastRE = case
             return True
         else:
-            x = self.r.spread(case, 10)
+            x = self.r.spread(case)
             if x:
                 self.lastRE = case
             return x
@@ -147,6 +171,15 @@ class RE:
             self.r = Character('@emptyset')
         else:
             self.r.spreadNp()
+    def unroll2(self):
+        self.string = None
+        if type(self.r)==type(KleenStar()):
+            s1 = copy.deepcopy(self.r.r)
+            s2 = copy.deepcopy(self.r.r)
+            s3 = copy.deepcopy(self.r)
+            self.r = Concatenate(s1, s2, s3)
+        elif type(self.r) == type(Question()) or type(self.r) == type(Concatenate()) or type(self.r) == type(Or()):
+            self.r.unroll2()
     def unroll(self):
         self.string = None
         self.r.unroll()
@@ -194,6 +227,58 @@ class RE:
         return self.r.kok()
     def or_concat(self):
         return self.r.or_concat()
+    def removeWhite(self):
+        if type(self.r) == type(White()):
+            if type(self.r.r) == type(Character('0')):
+                self.r = self.r.r
+            elif type(self.r.r) == type(KleenStar()):
+                self.r = White(self.r.r.r)
+            elif type(self.r.r) == type(Question()):
+                self.r = White(self.r.r.r)
+            elif type(self.r.r) == type(Or()):
+                self.r = self.r.r
+                for index, regex in self.r.list:
+                    self.r.list[index] = White(self.r.list[index])
+            elif type(self.r.r) == type(Concatenate()):
+                if bool(re.fullmatch(repr(self.r.r), '@epsilon')):
+                    tmp = copy.deepcopy(self.r.r.list)
+                    self.r = Or()
+                    self.r.list = tmp
+                    print(self.r.list)
+                    for index, regex in self.r.list:
+                        self.r.list[index] = White(self.r.list[index])
+                else:
+                    self.r = self.r.r
+        self.r.removeWhite()
+    def removeBlack(self):
+        if type(self.r) == type(Black()):
+            if type(self.r.r) == type(Character('0')):
+                self.r = self.r.r
+            elif type(self.r.r) == type(KleenStar()):
+                self.r = KleenStar(White(Black(self.r.r.r)))
+            elif type(self.r.r) == type(Question()):
+                if bool(re.fullmatch(repr(self.r.r.r), '@epsilon')):
+                    self.r = Black(self.r.r.r)
+                else:
+                    self.r = Question(Black(self.r.r.r))
+            elif type(self.r.r) == type(Or()):
+                self.r = self.r.r
+                for index, regex in self.r.list:
+                    self.r.list[index] = Black(self.r.list[index])
+            elif type(self.r.r) == type(Concatenate()):
+                self.r = self.r.r
+                for index, regex in self.r.list:
+                    self.r.list[index] = Black(self.r.list[index])
+
+
+        self.r.removeBlack()
+    def split2(self):
+        x = self.r.split2()
+        result = []
+        for regex in x:
+            result.append(RE(regex))
+        return result
+
 
 class Epsilon(RE):
     def __init__(self):
@@ -202,7 +287,7 @@ class Epsilon(RE):
         return '@epsilon'
     def hasHole(self):
         return False
-    def spread(self, case, parentId):
+    def spread(self, case):
         return False
     def spreadAll(self):
         return
@@ -236,6 +321,13 @@ class Epsilon(RE):
         return False
     def or_concat(self):
         return False
+    def removeWhite(self):
+        return
+    def removeBlack(self):
+        return
+    def split2(self):
+        return [Epsilon()]
+
 
 class EpsilonBlank(RE):
     def __init__(self):
@@ -244,7 +336,7 @@ class EpsilonBlank(RE):
         return ''
     def hasHole(self):
         return False
-    def spread(self, case, parentId):
+    def spread(self, case):
         return False
     def spreadAll(self):
         return
@@ -276,6 +368,10 @@ class EpsilonBlank(RE):
         return False
     def kok(self):
         return False
+    def removeWhite(self):
+        return
+    def removeBlack(self):
+        return
 
 
 class Character(RE):
@@ -286,7 +382,7 @@ class Character(RE):
         return self.c
     def hasHole(self):
         return False
-    def spread(self, case, parentId):
+    def spread(self, case):
         return False
     def spreadAll(self):
         return self.c
@@ -318,6 +414,12 @@ class Character(RE):
         return False
     def kok(self):
         return False
+    def removeWhite(self):
+        return
+    def removeBlack(self):
+        return
+    def split2(self):
+        return [copy.deepcopy(self)]
 
 class KleenStar(RE):
     def __init__(self, r=Hole()):
@@ -352,14 +454,14 @@ class KleenStar(RE):
             self.hasHole2 = False
         return self.hasHole2
 
-    def spread(self, case, parentId):
+    def spread(self, case):
         self.string = None
 
         if type(self.r)==type((Hole())):
             self.r = case
             return True
 
-        return self.r.spread(case,0)
+        return self.r.spread(case)
 
     def spreadAll(self):
         self.string = None
@@ -415,7 +517,7 @@ class KleenStar(RE):
         return self.r.overlap()
 
     def equivalent_K(self):
-        if not self.hasHole() and repr(self.r) != '1|0':
+        if not self.hasHole() and repr(self.r) != '0|1':
             return bool(re.fullmatch(repr(self.r), '0')) and bool(re.fullmatch(repr(self.r), '1'))
 
         if type(self.r)== type(Concatenate('0')):
@@ -493,6 +595,10 @@ class KleenStar(RE):
                     return True
 
         return self.r.kok()
+    def split2(self):
+        return [copy.deepcopy(self)]
+
+
 
 
 
@@ -529,7 +635,7 @@ class Question(RE):
             self.hasHole2 = False
         return self.hasHole2
 
-    def spread(self, case, parentId):
+    def spread(self, case):
         self.string = None
 
         if type(self.r)==type((Hole())):
@@ -539,7 +645,7 @@ class Question(RE):
             else:
                 return False
 
-        return self.r.spread(case, 1)
+        return self.r.spread(case)
 
     def spreadAll(self):
         self.string = None
@@ -635,6 +741,16 @@ class Question(RE):
                     return True
 
         return self.r.kok()
+    def unroll2(self):
+        self.string = None
+        if type(self.r) == type(Question()) or type(self.r) == type(Concatenate()) or type(self.r) == type(Or()):
+            self.r.unroll2()
+    def split2(self):
+        split=[]
+        split.extend(copy.deepcopy(self.r.split2()))
+        split.append(copy.deepcopy(Epsilon()))
+
+        return split
 
 class Concatenate(RE):
     def __init__(self, *regexs):
@@ -674,7 +790,7 @@ class Concatenate(RE):
         self.hasHole2 = any(list(i.hasHole() for i in self.list))
         return self.hasHole2
 
-    def spread(self, case, parentId):
+    def spread(self, case):
         self.string = None
 
         for index, regex in enumerate(self.list):
@@ -686,7 +802,7 @@ class Concatenate(RE):
                     self.checksum = index
                 self.list[index] = case
                 return True
-            if self.list[index].spread(case, 2):
+            if self.list[index].spread(case):
                 if not self.list[index].hasHole():
                     self.checksum = index
                 return True
@@ -828,6 +944,61 @@ class Concatenate(RE):
         return any(list(i.equivalent_QCK() for i in self.list))
     def kok(self):
         return any(list(i.kok() for i in self.list))
+    def removeWhite(self):
+        for index, regex in self.list:
+
+            if type(self.list[index]) == type(White()):
+                if type(self.list[index].r) == type(Character('0')):
+                    self.list[index] = self.list[index].r
+                elif type(self.list[index].r) == type(KleenStar()):
+                    self.list[index] = White(self.list[index].r.r)
+                elif type(self.list[index].r) == type(Question()):
+                    self.list[index] = White(self.list[index].r.r)
+                elif type(self.list[index].r) == type(Or()):
+                    self.list[index] = self.list[index].r
+                    for index2, regex2 in self.list[index].list:
+                        self.list[index2].list[index2] = Black(self.list[index2].list[index2])
+            self.list[index].removeWhite()
+
+    def removeBlack(self):
+        for index, regex in self.list:
+
+            if type(self.list[index]) == type(Black()):
+                if type(self.list[index].r) == type(Character('0')):
+                    self.list[index] = self.list[index].r
+                elif type(self.list[index].r) == type(KleenStar()):
+                    self.list[index] = KleenStar(White(Black(self.list[index].r.r)))
+                elif type(self.list[index].r) == type(Question()):
+                    if bool(re.fullmatch(repr(self.list[index].r.r), '@epsilon')):
+                        self.list[index] = Black(self.list[index].r.r)
+                    else:
+                        self.list[index] = Question(Black(self.list[index].r.r))
+                elif type(self.list[index].r) == type(Or()):
+                    self.list[index] = self.list[index].r
+                    for index2, regex2 in self.list[index].list:
+                        self.list[index2].list[index2] = Black(self.list[index2].list[index2])
+
+            self.list[index].removeBlack()
+    def unroll2(self):
+        self.string = None
+        for index, regex in enumerate(self.list):
+            if type(regex)==type(KleenStar()):
+                s1 = copy.deepcopy(regex.r)
+                s2 = copy.deepcopy(regex.r)
+                s3 = copy.deepcopy(regex)
+                self.list[index] = Concatenate(s1, s2, s3)
+            elif type(regex) == type(Question()) or type(regex) == type(Concatenate()) or type(regex) == type(Or()):
+                self.list[index].unroll2()
+    def split2(self):
+        split = []
+        for index, regex in enumerate(self.list):
+            sp = regex.split2()
+            for splitE in sp:
+                tmp = copy.deepcopy(self)
+                tmp.list[index] = splitE
+                split.append(tmp)
+        return split
+
 
 
 
@@ -870,10 +1041,10 @@ class Or(RE):
 
 
 
-    def spread(self, case, parentId):
+    def spread(self, case):
         self.string = None
         for index, regex in enumerate(self.list):
-            if type(regex) == type(Hole()) and type(case)==type(Or()):
+            '''if type(regex) == type(Hole()) and type(case)==type(Or()):
                 self.list.append(Hole())
                 self.list.sort(key=lambda regex: '!' if repr(regex) == '#' else ('#' if regex.hasHole() else repr(regex)), reverse=True)
                 return True
@@ -881,8 +1052,20 @@ class Or(RE):
                 self.list[index] = case
                 self.list.sort(key=lambda regex: '!' if repr(regex) == '#' else ('#' if regex.hasHole() else repr(regex)), reverse=True)
                 return True
-            if self.list[index].spread(case, 3):
+            if self.list[index].spread(case):
                 self.list.sort(key=lambda regex: '!' if repr(regex) == '#' else ('#' if regex.hasHole() else repr(regex)), reverse=True)
+                return True'''
+
+            if type(regex) == type(Hole()) and type(case)==type(Or()):
+                self.list.append(Hole())
+                self.list.sort(key=lambda regex: '~' if repr(regex) == '#' else ('}' if regex.hasHole() else repr(regex)))
+                return True
+            elif type(regex)==type((Hole())):
+                self.list[index] = case
+                self.list.sort(key=lambda regex: '~' if repr(regex) == '#' else ('}' if regex.hasHole() else repr(regex)))
+                return True
+            if self.list[index].spread(case):
+                self.list.sort(key=lambda regex: '~' if repr(regex) == '#' else ('}' if regex.hasHole() else repr(regex)))
                 return True
         return False
 
@@ -1022,6 +1205,54 @@ class Or(RE):
         return any(list(i.equivalent_QCK() for i in self.list))
     def kok(self):
         return any(list(i.kok() for i in self.list))
+    def removeWhite(self):
+        for index, regex in self.list:
+
+            if type(self.list[index]) == type(White()):
+                if type(self.list[index].r) == type(Character('0')):
+                    self.list[index] = self.list[index].r
+                elif type(self.list[index].r) == type(KleenStar()):
+                    self.list[index] = White(self.list[index].r.r)
+                elif type(self.list[index].r) == type(Concatenate()):
+                    if bool(re.fullmatch(repr(self.list[index].r), '@epsilon')):
+                        tmp = copy.deepcopy(self.list[index].r.list)
+                        self.list[index] = Or()
+                        self.list[index].list = tmp
+                        print(self.list[index])
+                        for index, regex in self.list[index].list:
+                            self.list[index].list[index] = White(self.list[index].list[index])
+                    else:
+                        self.list[index] = self.list[index].r
+            self.list[index].removeWhite()
+    def removeBlack(self):
+        for index, regex in self.list:
+
+            if type(self.list[index]) == type(Black()):
+                if type(self.list[index].r) == type(Character('0')):
+                    self.list[index] = self.list[index].r
+                elif type(self.list[index].r) == type(KleenStar()):
+                    self.list[index] = KleenStar(White(Black(self.list[index].r.r)))
+                elif type(self.list[index].r) == type(Concatenate()):
+                    self.list[index] = self.list[index].r
+                    for index2, regex2 in self.list[index].list:
+                        self.list[index2].list[index2] = Black(self.list[index2].list[index2])
+
+            self.list[index].removeBlack()
+    def unroll2(self):
+        self.string = None
+        for index, regex in enumerate(self.list):
+            if type(regex)==type(KleenStar()):
+                s1 = copy.deepcopy(regex.r)
+                s2 = copy.deepcopy(regex.r)
+                s3 = copy.deepcopy(regex)
+                self.list[index] = Concatenate(s1, s2, s3)
+            elif type(regex) == type(Question()) or type(regex) == type(Concatenate()) or type(regex) == type(Or()):
+                self.list[index].unroll2()
+    def split2(self):
+        split=[]
+        for index, regex in enumerate(self.list):
+            split.extend(regex.split2())
+        return split
 
 
 
