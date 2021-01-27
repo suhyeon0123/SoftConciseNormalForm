@@ -137,7 +137,10 @@ class RE:
         if type(case) == type(Concatenate(Hole(),Hole())):
             self.cost += HOLE_COST + CONCAT_COST
         elif type(case) == type(Or()):
-            self.cost += HOLE_COST + UNION_COST
+            if repr(case) == '0|1':
+                self.cost += - HOLE_COST + SYMBOL_COST + SYMBOL_COST +UNION_COST
+            else:
+                self.cost += HOLE_COST + UNION_COST
         elif type(case) == type(KleenStar()) or type(case) == type(Question()):
             self.cost += CLOSURE_COST
         else:
