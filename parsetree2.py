@@ -252,9 +252,9 @@ class RE:
             for index, regex in enumerate(self.list):
                 if type(regex) == type(KleenStar()) and type(regex.r) == type(Or()):
                     for inor in regex.r.list:
-                        orlist.list.append(inor)
+                        orlist.append(inor)
                 else:
-                    orlist.list.append(regex)
+                    orlist.append(regex)
 
 
             '''# 0101+(01)* 를 구현하려고 함..
@@ -263,7 +263,7 @@ class RE:
 
             single0 = False
             single1 = False
-            for index, regex in enumerate(orlist.list):
+            for index, regex in enumerate(orlist):
 
                 # or singlesymbol
                 if not regex.hasHole():
@@ -362,45 +362,71 @@ class RE:
     def kc_qc(self):
         if self.type == Type.K:
             if type(self.r) == type(Concatenate()):
+                kqcount = 0
+
                 for index, regex in enumerate(self.r.list):
+                    # 모두 kleenen이거나 q일때
+                    if type(regex) == type(KleenStar()) or type(regex) == type(Question()):
+                        kqcount += 1
+
                     #kc안에 x*와 x들이 있을때
                     if type(regex) == type(KleenStar()) and not regex.hasHole():
                         count = 0
                         for regex2 in self.r.list:
-                            if repr(regex.r) == repr(regex2) or repr(regex) == repr(regex2):
-                                count += 1
+                            if regex2.type == Type.K or regex2.type == Type.Q:
+                                if repr(regex.r) == repr(regex2.r):
+                                    count += 1
+                            else:
+                                if repr(regex.r) == repr(regex2):
+                                    count += 1
                         if count == len(self.r.list):
                             return True
-                    #kc안에 xx?
-                    '''if type(regex) == type(Question()) and not regex.hasHole():
+
+                    # kc안에 x?x?, xx?, x?x?x?, xx?x?, xxx?
+                    if type(regex) == type(Question()) and not regex.hasHole():
                         count = 0
                         for regex2 in self.r.list:
                             if repr(regex.r) == repr(regex2) or repr(regex) == repr(regex2):
                                 count += 1
-                        if count == len(self.r.list):
-                            return True'''
+                        if count == len(self.r.list) and len(self.r.list)<=3:
+                            return True
+                if kqcount == len(self.r.list):
+                    return True
 
-            '''elif type(self.r) == type(Or()):
+
+                '''# or 안에 concat확인
                 for regex in self.r.list:
-                    if type(regex) == type(Concatenate()):
+                    if type(regex) == type(Or()):
+                        kqcount = 0
+
                         for regex2 in regex.list:
+                            # 모두 kleenen이거나 q일때
+                            if type(regex) == type(KleenStar()) or type(regex) == type(Question()):
+                                kqcount += 1
+
+                            # kc안에 x*와 x들이 있을때
                             if type(regex2) == type(KleenStar()) and not regex2.hasHole():
                                 count = 0
                                 for regex3 in regex.list:
-                                    if repr(regex2.r) == repr(regex3) or repr(regex2) == repr(regex3):
-                                        count += 1
+                                    if regex3.type == Type.K or regex3.type == Type.Q:
+                                        if repr(regex2.r) == repr(regex3.r):
+                                            count += 1
+                                    else:
+                                        if repr(regex2.r) == repr(regex3):
+                                            count += 1
                                 if count == len(regex.list):
-                                    # print('type2')
                                     return True
 
+                            # kc안에 x?x?, xx?, x?x?x?, xx?x?, xxx?
                             if type(regex2) == type(Question()) and not regex2.hasHole():
                                 count = 0
                                 for regex3 in regex.list:
                                     if repr(regex2.r) == repr(regex3) or repr(regex2) == repr(regex3):
                                         count += 1
-                                if count == len(regex.list):
-                                    # print('type3')
-                                    return True'''
+                                if count == len(regex.list) and len(self.r.list) <= 3:
+                                    return True
+                        if kqcount == len(self.r.list):
+                            return True'''
 
             return self.r.kc_qc()
 
@@ -506,7 +532,14 @@ class KleenStar(RE):
             self.hasHole2 = False
         return self.hasHole2
     def getCost(self):
-        return CLOSURE_COST + self.r.getCost()
+        pluscost = 0
+        if self.r.type == Type.C or self.r.type == Type.U:
+            for regex in self.r.list:
+                if regex.type == Type.K or regex.type == Type.Q:
+                    pluscost += 20
+        return CLOSURE_COST + self.r.getCost() + pluscost
+
+        return CLOSURE_COST + self.r.getCost() + pluscost
 
 class Question(RE):
     def __init__(self, r=Hole(), isRoot=False):
@@ -543,7 +576,12 @@ class Question(RE):
             self.hasHole2 = False
         return self.hasHole2
     def getCost(self):
-        return  CLOSURE_COST + self.r.getCost()
+        pluscost =0
+        if self.r.type == Type.C or self.r.type == Type.U:
+            for regex in self.r.list:
+                if regex.type == Type.K or regex.type == Type.Q:
+                    pluscost += 20
+        return  CLOSURE_COST + self.r.getCost() + pluscost
 
 class Concatenate(RE):
     def __init__(self, *regexs, isRoot = False):
@@ -585,7 +623,19 @@ class Concatenate(RE):
         self.hasHole2 = any(list(i.hasHole() for i in self.list))
         return self.hasHole2
     def getCost(self):
-        return CONCAT_COST + sum(list(i.getCost() for i in self.list))
+        continuousKorQ = 0
+        count = 1
+        tmp = Epsilon()
+        for regex in self.list:
+            if tmp.type == regex.type and (regex.type == Type.K or regex.type == Type.Q):
+                count += 1
+            else:
+                count = 1
+            tmp = regex
+            if count >= 2:
+                continuousKorQ += 20
+
+        return CONCAT_COST + sum(list(i.getCost() for i in self.list)) + continuousKorQ
 
 class Or(RE):
     def __init__(self, a=Hole(), b=Hole(), isRoot=False):
