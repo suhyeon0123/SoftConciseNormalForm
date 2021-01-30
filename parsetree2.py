@@ -13,87 +13,31 @@ class Type(Enum):
     C = 4
     U = 5
     EPS = 6
-    #EPSB = 7
-
-
-class Regex:
-    def __init__(self, root):
-        self.root = root
-        self.hasHole2 = True
-        self.string = None
-        self.first = True
-        self.cost = HOLE_COST
-        self.holecount = 1
-        self.lastRE = Hole()
-
-    def spread(self, case):
-        # 연속된 spread제어
-        if case.type != Type.CHAR:
-            if case.type == self.lastRE.type:
-                return False
-            if self.lastRE.type == Type.K and case.type == Type.Q:
-                return False
-            if self.lastRE.type == Type.Q and case.type == Type.K:
-                return False
-
-        #cost
-        if case.type == Type.K or case.type == Type.Q:
-            self.cost += CLOSURE_COST
-        elif case.type == Type.C:
-            self.cost += HOLE_COST + CONCAT_COST
-        elif case.type == Type.U:
-            if repr(case) == '0|1':
-                self.cost += - HOLE_COST + SYMBOL_COST + SYMBOL_COST +UNION_COST
-            else:
-                self.cost += HOLE_COST + UNION_COST
-        else:
-            self.cost += - HOLE_COST + SYMBOL_COST
-
-        self.string = None
-
-        if self.first:
-            self.r = case
-            self.first = False
-            self.lastRE = case.type
-            return True
-        else:
-            x = self.r.spread(case)
-            if x:
-                self.lastRE = case.type
-            return x
-
-    def unroll2(self):
-        self.string = None
-        if type(self.r)==type(KleenStar()):
-            s1 = copy.deepcopy(self.r.r)
-            s2 = copy.deepcopy(self.r.r)
-            s3 = copy.deepcopy(self.r)
-            self.r = Concatenate(s1, s2, s3)
-        elif type(self.r) == type(Question()) or type(self.r) == type(Concatenate()) or type(self.r) == type(Or()):
-            self.r.unroll2()
-    def split2(self):
-        x = self.r.split2()
-        result = []
-        for regex in x:
-            result.append(RE(regex))
-        return result
-
 
 class RE:
     def __lt__(self, other):
         return False
 
+    def rpn(self):
+        if self.type == Type.K or self.type == Type.Q:
+            return self.r.rpn()+1
+        elif self.type == Type.C or self.type == Type.U:
+            return sum(list(i.rpn() for i in self.list))+ len(self.list) -1
+        else:
+            return 1
+
     def spread(self, case):
         # 연속된 spread제어
-        if case.type != Type.CHAR and self.isRoot:
-            if case.type == self.lastRE:
-                return False
-            if self.lastRE == Type.K and case.type == Type.Q:
-                return False
-            if self.lastRE == Type.Q and case.type == Type.K:
-                return False
+        if self.isRoot:
+            if case.type != Type.CHAR:
+                if case.type == self.lastRE:
+                    return False
+                if self.lastRE == Type.K and case.type == Type.Q:
+                    return False
+                if self.lastRE == Type.Q and case.type == Type.K:
+                    return False
+            self.lastRE = case.type
 
-        self.lastRE = case.type
         self.string = None
 
         if self.type == Type.K or self.type == Type.Q:
@@ -303,11 +247,25 @@ class RE:
             return any(list(i.orinclusive() for i in self.list))
 
         elif self.type == Type.U:
+            #oko작업
+            orlist= []
+            for index, regex in enumerate(self.list):
+                if type(regex) == type(KleenStar()) and type(regex.r) == type(Or()):
+                    for inor in regex.r.list:
+                        orlist.list.append(inor)
+                else:
+                    orlist.list.append(regex)
+
+
+            '''# 0101+(01)* 를 구현하려고 함..
+            if type(regex2) == type(Concatenate()):
+                pass'''
+
             single0 = False
             single1 = False
+            for index, regex in enumerate(orlist.list):
 
-            for index, regex in enumerate(self.list):
-                #or singlesymbol
+                # or singlesymbol
                 if not regex.hasHole():
                     if '0' not in repr(regex):
                         if single1:
@@ -320,33 +278,11 @@ class RE:
                         else:
                             single0 = True
 
-                #x* with x?,x
+                # x* with x?,x
                 if type(regex) == type(KleenStar()) and not regex.hasHole():
                     for regex2 in self.list:
                         if repr(regex.r) == repr(regex2):
                             return True
-                        if regex2.type == Type.Q and repr(regex.r) == repr(regex2.r):
-                            return True
-
-                # x?, x
-                if regex.type == Type.Q and not regex.hasHole():
-                    for regex2 in self.list:
-                        if repr(regex.r) == repr(regex2):
-                            return True
-
-                # 0101+(01)* 를 구현하려고 함..
-                '''if type(regex2) == type(Concatenate()):
-                    pass'''
-
-                #or inclusive recursive 단편적으로 구현
-                '''if type(regex) == type(KleenStar()) and type(regex.r) == type(Or()):
-                    for inor in regex.r.list:
-                        if not inor.hasHole():
-                            for x in self.list:
-                                if repr(x) == repr(inor):
-                                    # print('x')
-                                    return True'''
-
 
                 if regex.orinclusive():
                     return True
@@ -427,7 +363,6 @@ class RE:
         if self.type == Type.K:
             if type(self.r) == type(Concatenate()):
                 for index, regex in enumerate(self.r.list):
-
                     #kc안에 x*와 x들이 있을때
                     if type(regex) == type(KleenStar()) and not regex.hasHole():
                         count = 0
