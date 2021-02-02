@@ -29,7 +29,6 @@ w.put((Concatenate(Hole(),Hole()).getCost(), Concatenate(Hole(),Hole(),isRoot=Tr
 w.put((KleenStar().getCost(), KleenStar(isRoot=True)))
 
 
-
 if args.examples:
     examples = Examples(args.examples)
 else:
@@ -68,7 +67,7 @@ while not w.empty() and not finished:
             k = copy.deepcopy(s)
 
             if not k.spread(new_elem):
-                #print("false")
+                #print("false "+ new_elem)
                 continue
 
             traversed += 1
@@ -95,11 +94,11 @@ while not w.empty() and not finished:
                 continue
 
             if type(new_elem) == type(Question()) and k.OQ():
-                # print(repr(k), "is OQ")
+                #print(repr(k), "is OQ")
                 continue
 
             if k.kc_qc():
-                # print(repr(k), "is kc_qc")
+                #print(repr(k), "is kc_qc")
                 continue
 
 
@@ -125,9 +124,9 @@ while not w.empty() and not finished:
                     #print(repr(k), "is equivalent_KO")
                     continue
 
-                if is_new_redundant2(k, examples):
+                '''if is_new_redundant2(k, examples):
                     #print(repr(k), "is redundant")
-                    continue
+                    continue'''
 
             print(k)
             if not k.hasHole():

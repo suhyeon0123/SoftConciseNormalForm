@@ -1,6 +1,5 @@
 #Regular Expression Implementation ,Written by Adrian Stoll
 import copy
-import random
 import re2 as re
 from config import *
 from enum import Enum
@@ -13,6 +12,7 @@ class Type(Enum):
     C = 4
     U = 5
     EPS = 6
+
 
 class RE:
     def __lt__(self, other):
@@ -36,7 +36,11 @@ class RE:
                     return False
                 if self.lastRE == Type.Q and case.type == Type.K:
                     return False
-            self.lastRE = case.type
+
+            if repr(case) == '0|1':
+                self.lastRE = Type.CHAR
+            else:
+                self.lastRE = case.type
 
         self.string = None
 
@@ -536,10 +540,9 @@ class KleenStar(RE):
         if self.r.type == Type.C or self.r.type == Type.U:
             for regex in self.r.list:
                 if regex.type == Type.K or regex.type == Type.Q:
-                    pluscost += 20
+                    pluscost += 1000
         return CLOSURE_COST + self.r.getCost() + pluscost
 
-        return CLOSURE_COST + self.r.getCost() + pluscost
 
 class Question(RE):
     def __init__(self, r=Hole(), isRoot=False):
@@ -581,7 +584,7 @@ class Question(RE):
             for regex in self.r.list:
                 if regex.type == Type.K or regex.type == Type.Q:
                     pluscost += 20
-        return  CLOSURE_COST + self.r.getCost() + pluscost
+        return  CLOSURE_COST + self.r.getCost()
 
 class Concatenate(RE):
     def __init__(self, *regexs, isRoot = False):
@@ -633,7 +636,7 @@ class Concatenate(RE):
                 count = 1
             tmp = regex
             if count >= 2:
-                continuousKorQ += 20
+                continuousKorQ += 1000
 
         return CONCAT_COST + sum(list(i.getCost() for i in self.list)) + continuousKorQ
 
@@ -647,6 +650,10 @@ class Or(RE):
         self.hasHole2 = True
         self.type = Type.U
         self.lastRE = Type.U
+        if a.type == Type.HOLE:
+            self.lastRE = Type.U
+        else:
+            self.lastRE = Type.CHAR
         self.isRoot = isRoot
 
     def __repr__(self):
