@@ -12,6 +12,7 @@ class Type(Enum):
     C = 4
     U = 5
     EPS = 6
+    REGEX = 10
 
 
 class RE:
@@ -23,25 +24,12 @@ class RE:
             return self.r.rpn()+1
         elif self.type == Type.C or self.type == Type.U:
             return sum(list(i.rpn() for i in self.list))+ len(self.list) -1
+        elif self.type == Type.REGEX:
+            return self.r.rpn()
         else:
             return 1
 
     def spread(self, case):
-        # 연속된 spread제어
-        if self.isRoot:
-            if case.type != Type.CHAR:
-                if case.type == self.lastRE:
-                    return False
-                if self.lastRE == Type.K and case.type == Type.Q:
-                    return False
-                if self.lastRE == Type.Q and case.type == Type.K:
-                    return False
-
-            if repr(case) == '0|1':
-                self.lastRE = Type.CHAR
-            else:
-                self.lastRE = case.type
-
         self.string = None
 
         if self.type == Type.K or self.type == Type.Q:
@@ -57,7 +45,7 @@ class RE:
                     self.list.append(Hole())
                     return True
                 elif regex.type == Type.HOLE:
-                    if case.type == Type.CHAR:
+                    if case.type == Type.CHAR or repr(case) == '0|1':
                         self.checksum = index
                     self.list[index] = case
                     return True
@@ -87,7 +75,26 @@ class RE:
                 else:
                     continue
             return False
+        elif self.type == Type.REGEX:
+            # 연속된 spread제어
+            if case.type != Type.CHAR:
+                if case.type == self.lastRE:
+                    return False
+                if self.lastRE == Type.K and case.type == Type.Q:
+                    return False
+                if self.lastRE == Type.Q and case.type == Type.K:
+                    return False
 
+            if repr(case) == '0|1':
+                self.lastRE = Type.CHAR
+            else:
+                self.lastRE = case.type
+
+            if self.r.type == Type.HOLE:
+                self.r = case
+                return True
+            else:
+                return self.r.spread(case)
         else:
             return False
 
@@ -99,7 +106,7 @@ class RE:
                 self.r = Or(Character('0'), Character('1'))
             else:
                 self.r.spreadAll()
-        if self.type == Type.Q:
+        elif self.type == Type.Q:
             if self.r.type == Type.HOLE:
                 self.r = KleenStar(Or(Character('0'), Character('1')))
             else:
@@ -110,6 +117,8 @@ class RE:
                     self.list[index] = KleenStar(Or(Character('0'), Character('1')))
                 else:
                     self.list[index].spreadAll()
+        elif self.type == Type.REGEX:
+            self.r.spreadAll()
 
     def spreadNp(self):
         self.string = None
@@ -124,12 +133,45 @@ class RE:
                     self.list[index] = Character('@emptyset')
                 else:
                     self.list[index].spreadNp()
+        elif self.type == Type.REGEX:
+            self.r.spreadNp()
 
     def unroll2(self):
         self.string = None
 
         if self.type == Type.Q:
             self.r.unroll2()
+        elif self.type == Type.C or self.type == Type.U:
+            for index, regex in enumerate(self.list):
+                if regex.type == Type.K:
+                    s1 = copy.deepcopy(regex.r)
+                    s2 = copy.deepcopy(regex.r)
+                    s3 = copy.deepcopy(regex)
+                    self.list[index] = Concatenate(s1, s2, s3)
+                else:
+                    self.list[index].unroll2()
+        elif self.type == Type.REGEX:
+            if self.r.type == Type.K:
+                s1 = copy.deepcopy(self.r.r)
+                s2 = copy.deepcopy(self.r.r)
+                s3 = copy.deepcopy(self.r)
+                self.r= Concatenate(s1, s2, s3)
+            else:
+                self.r.unroll2()
+    '''def unroll3(self):
+        if self.type == Type.K:
+            s1 = copy.deepcopy(self.r)
+            s2 = copy.deepcopy(self.r)
+            s3 = copy.deepcopy(self)
+            return [Concatenate(s1,s2,s3)]
+
+        if self.type == Type.Q:
+            oldunrolllist = self.r.unroll3()
+            newunrolllist = []
+            for regex in oldunrolllist:
+                newunrolllist.append(Question(regex))
+            return newunrolllist
+
         if self.type == Type.C or self.type == Type.U:
             for index, regex in enumerate(self.list):
                 if regex.type == Type.K:
@@ -139,7 +181,34 @@ class RE:
                     self.list[index] = Concatenate(s1, s2, s3)
                 else:
                     self.list[index].unroll2()
+                    
+        if self.type == Type.C:
+            unroll = []
+            for index, regex in enumerate(self.list):
+                unrolledlist = regex.unroll3()
+                if len(unrolledlist) == 1:
+                    if repr(unrolledlist[0]) != repr(regex):
+                            tmp = copy.deepcopy(self)
+                            tmp.list[index] = unrollE
+                            unroll.append(tmp)
+                else:                
+                    for unrollE in unrolledlist:
+                        tmp = copy.deepcopy(self)
+                        tmp.list[index] = unrollE
+                        unroll.append(tmp)
+                        
+            if len(unroll) == 0:
+                unroll.append(copy.deepcopy(self))
+            return unroll
 
+        if self.type == Type.U:
+            unroll= []
+            for index, regex in enumerate(self.list):
+                unrolledlist = regex.unroll3()
+                self.list[index] = regex.unroll3()
+            return [self]
+        else:
+            return [self]'''
     def split2(self):
         if self.type == Type.K:
             return [copy.deepcopy(self)]
@@ -168,6 +237,12 @@ class RE:
                 if repr(regex) != '#':
                     split.extend(regex.split2())
             return split
+        elif self.type == Type.REGEX:
+            split = []
+            rsplit = self.r.split2()
+            for regex in rsplit:
+                split.append(REGEX(regex))
+            return split
         else:
             return [self]
 
@@ -190,7 +265,26 @@ class RE:
                 if regex.overlap():
                     return True
             return False
+        elif self.type == Type.REGEX:
+            return self.r.overlap()
+        else:
+            return False
 
+    def starnormalform(self):
+        if self.type == Type.K or self.type == Type.Q:
+            return self.r.hasEps()
+        elif self.type == Type.C or self.type == Type.U:
+            return any(list(i.starnormalform() for i in self.list))
+        elif self.type == Type.REGEX:
+            return self.r.starnormalform()
+
+    def hasEps(self):
+        if self.type == Type.K or self.type == Type.Q:
+            return True
+        elif self.type == Type.C:
+            return all(list(i.hasEps() for i in self.list))
+        elif self.type == Type.U:
+            return any(list(i.hasEps() for i in self.list))
         else:
             return False
 
@@ -210,6 +304,8 @@ class RE:
             return self.r.equivalent_K()
         elif self.type == Type.C or self.type == Type.U:
             return any(list(i.equivalent_K() for i in self.list))
+        elif self.type == Type.REGEX:
+            return self.r.equivalent_K()
         else:
             return False
 
@@ -241,6 +337,8 @@ class RE:
                                 return True
 
             return any(list(i.prefix() for i in self.list))
+        elif self.type == Type.REGEX:
+            return self.r.prefix()
         else:
             return False
 
@@ -292,6 +390,8 @@ class RE:
                     return True
 
             return False
+        elif self.type == Type.REGEX:
+            return self.r.orinclusive()
         else:
             return False
 
@@ -304,26 +404,50 @@ class RE:
             if self.checksum != 0:
                 if self.list[self.checksum - 1].type == Type.Q and not (
                         self.list[self.checksum].type == Type.K or self.list[self.checksum].type == Type.Q):
-                    if repr(self.list[self.checksum - 1].r) == repr(self.list[self.checksum]):
-                        return True
+                    if self.list[self.checksum].type == Type.U:
+                        for regex in self.list[self.checksum].list:
+                            if repr(self.list[self.checksum - 1].r) == repr(regex):
+                                return True
+                    else:
+                        if repr(self.list[self.checksum - 1].r) == repr(self.list[self.checksum]):
+                            return True
                 elif self.list[self.checksum - 1].type == Type.Q and self.list[self.checksum].type == Type.K:
                     if repr(self.list[self.checksum - 1].r) == repr(self.list[self.checksum].r):
                         return True
                 elif self.list[self.checksum - 1].type == Type.K and not (
                         self.list[self.checksum].type == Type.K or self.list[self.checksum].type == Type.Q):
-                    if repr(self.list[self.checksum - 1].r) == repr(self.list[self.checksum]):
-                        return True
+                    if self.list[self.checksum].type == Type.U:
+                        print("in")
+                        for regex in self.list[self.checksum].list:
+                            if repr(self.list[self.checksum - 1].r) == repr(regex):
+                                return True
+                    else:
+                        if repr(self.list[self.checksum - 1].r) == repr(self.list[self.checksum]):
+                            return True
                 elif self.list[self.checksum - 1].type == Type.K and self.list[self.checksum].type == Type.Q:
                     if repr(self.list[self.checksum - 1].r) == repr(self.list[self.checksum].r):
                         return True
                 elif self.list[self.checksum - 1].type == Type.K and self.list[self.checksum].type == Type.K:
                     if repr(self.list[self.checksum - 1].r) == repr(self.list[self.checksum].r):
                         return True
+
+            '''#single regex
+            if self.checksum != 0 and self.checksum != 1:
+                for index, regex in enumerate(self.list):
+                    if index<self.checksum and (regex.type == Type.K or regex.type == Type.Q) and regex.r.type == Type.C:
+                        if len(regex.r.list) == self.checksum - index:
+                            tmp = Concatenate()
+                            tmp.list = self.list[index:self.checksum+1]
+                            if repr(regex) == repr(tmp):
+                                print("x")
+                                return True'''
+
             return any(list(i.equivalent_concat() for i in self.list))
 
         elif self.type == Type.U:
             return any(list(i.equivalent_concat() for i in self.list))
-
+        elif self.type == Type.REGEX:
+            return self.r.equivalent_concat()
         else:
             return False
 
@@ -347,6 +471,8 @@ class RE:
 
         elif self.type == Type.U:
             return any(list(i.kok() for i in self.list))
+        elif self.type == Type.REGEX:
+            return self.r.kok()
         else:
             return False
 
@@ -360,6 +486,8 @@ class RE:
                 if type(regex) == type(Question()):
                     return True
             return any(list(i.OQ() for i in self.list))
+        elif self.type == Type.REGEX:
+            return self.r.OQ()
         else:
             return False
 
@@ -395,6 +523,7 @@ class RE:
                         if count == len(self.r.list) and len(self.r.list)<=3:
                             return True
                 if kqcount == len(self.r.list):
+                    print("kckc")
                     return True
 
 
@@ -453,14 +582,20 @@ class RE:
                     if type(regex) == type(KleenStar()) or type(regex) == type(Question()):
                         count += 1
                 if count == len(self.r.list):
+                    print("qcqc")
                     return True
 
             return self.r.kc_qc()
 
         elif self.type == Type.C or self.type == Type.U:
             return any(list(i.kc_qc() for i in self.list))
+        elif self.type == Type.REGEX:
+            return self.r.kc_qc()
         else:
             return False
+
+
+
 
 
 class Hole(RE):
@@ -475,6 +610,17 @@ class Hole(RE):
     def getCost(self):
         return HOLE_COST
 
+class REGEX(RE):
+    def __init__(self, r = Hole()):
+        self.r = r
+        self.type = Type.REGEX
+        self.lastRE = Type.REGEX
+    def __repr__(self):
+        return repr(self.r)
+    def hasHole(self):
+        return self.r.hasHole()
+    def getCost(self):
+        return self.r.getCost()
 
 class Epsilon(RE):
     def __init__(self):
@@ -486,11 +632,10 @@ class Epsilon(RE):
         return False
 
 class Character(RE):
-    def __init__(self, c, isRoot=False):
+    def __init__(self, c):
         self.c = c
         self.level = 0
         self.type = Type.CHAR
-        self.isRoot = isRoot
     def __repr__(self):
         return self.c
     def hasHole(self):
@@ -499,14 +644,12 @@ class Character(RE):
         return SYMBOL_COST
 
 class KleenStar(RE):
-    def __init__(self, r=Hole(), isRoot=False ):
+    def __init__(self, r=Hole()):
         self.r = r
         self.level = 1
         self.string = None
         self.hasHole2 = True
         self.type = Type.K
-        self.lastRE = Type.K
-        self.isRoot = isRoot
 
     def __repr__(self):
         if self.string:
@@ -541,17 +684,16 @@ class KleenStar(RE):
             for regex in self.r.list:
                 if regex.type == Type.K or regex.type == Type.Q:
                     pluscost += 1000
-        return CLOSURE_COST + self.r.getCost() + pluscost
+        return CLOSURE_COST + self.r.getCost()
 
 
 class Question(RE):
-    def __init__(self, r=Hole(), isRoot=False):
+    def __init__(self, r=Hole()):
         self.r = r
         self.level = 1
         self.string = None
         self.hasHole2 = True
         self.type = Type.Q
-        self.isRoot = isRoot
     def __repr__(self):
         if self.string:
             return self.string
@@ -587,7 +729,7 @@ class Question(RE):
         return  CLOSURE_COST + self.r.getCost()
 
 class Concatenate(RE):
-    def __init__(self, *regexs, isRoot = False):
+    def __init__(self, *regexs):
         self.list = list()
         for regex in regexs:
             self.list.append(regex)
@@ -596,8 +738,6 @@ class Concatenate(RE):
         self.hasHole2 = True
         self.checksum = 0
         self.type = Type.C
-        self.lastRE = Type.C
-        self.isRoot = isRoot
 
     def __repr__(self):
         if self.string:
@@ -638,10 +778,10 @@ class Concatenate(RE):
             if count >= 2:
                 continuousKorQ += 1000
 
-        return CONCAT_COST + sum(list(i.getCost() for i in self.list)) + continuousKorQ
+        return CONCAT_COST + sum(list(i.getCost() for i in self.list))
 
 class Or(RE):
-    def __init__(self, a=Hole(), b=Hole(), isRoot=False):
+    def __init__(self, a=Hole(), b=Hole()):
         self.list = list()
         self.list.append(a)
         self.list.append(b)
@@ -649,12 +789,6 @@ class Or(RE):
         self.string = None
         self.hasHole2 = True
         self.type = Type.U
-        self.lastRE = Type.U
-        if a.type == Type.HOLE:
-            self.lastRE = Type.U
-        else:
-            self.lastRE = Type.CHAR
-        self.isRoot = isRoot
 
     def __repr__(self):
         if self.string:

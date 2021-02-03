@@ -21,13 +21,7 @@ w = PriorityQueue()
 
 scanned = set()
 
-w.put((Character('0').getCost(), Character('0')))
-w.put((Character('1').getCost(), Character('1')))
-w.put((Or().getCost(), Or(isRoot=True)))
-w.put((Or(Character('0'),Character('1')).getCost(), Or(Character('0'),Character('1'),isRoot=True)))
-w.put((Concatenate(Hole(),Hole()).getCost(), Concatenate(Hole(),Hole(),isRoot=True)))
-w.put((KleenStar().getCost(), KleenStar(isRoot=True)))
-
+w.put((REGEX().getCost(), REGEX()))
 
 if args.examples:
     examples = Examples(args.examples)
@@ -44,10 +38,6 @@ prevCost = 0
 
 finished = False
 
-if is_solution('0', examples, membership):
-    print('0')
-if is_solution('1', examples, membership):
-    print('1')
 
 
 while not w.empty() and not finished:
@@ -89,8 +79,9 @@ while not w.empty() and not finished:
 
 
 
+
             if (type(new_elem) == type(KleenStar()) or type(new_elem) == type(Question())) and k.kok():
-                #print(repr(k), "is kok")
+                print(repr(k), "is kok")
                 continue
 
             if type(new_elem) == type(Question()) and k.OQ():
@@ -100,33 +91,35 @@ while not w.empty() and not finished:
             if k.kc_qc():
                 #print(repr(k), "is kc_qc")
                 continue
+            if k.starnormalform():
+                print(repr(k), "starNormalForm")
+                continue
 
+            if k.equivalent_concat():
+                #print(repr(k), "is equivalent_concat")
+                continue
 
             checker=False
             if repr(new_elem)=='0|1':
                 checker=True
                 
-            if type(new_elem)==type(Character('0')) or checker:
+            #if type(new_elem)==type(Character('0')) or checker:
 
-                if k.prefix():
-                    #print(repr(k), "is prefix")
-                    continue
+            if k.prefix():
+                #print(repr(k), "is prefix")
+                continue
 
-                if is_orinclusive(k):
-                    #print(repr(k), "is orinclusive")
-                    continue
+            if is_orinclusive(k):
+                #print(repr(k), "is orinclusive")
+                continue
 
-                if k.equivalent_concat():
-                    #print(repr(k), "is equivalent_concat")
-                    continue
+            if is_equivalent_K(k):
+                #print(repr(k), "is equivalent_KO")
+                continue
 
-                if is_equivalent_K(k):
-                    #print(repr(k), "is equivalent_KO")
-                    continue
-
-                '''if is_new_redundant2(k, examples):
-                    #print(repr(k), "is redundant")
-                    continue'''
+            '''if is_new_redundant2(k, examples):
+                #print(repr(k), "is redundant")
+                continue'''
 
             print(k)
             if not k.hasHole():
