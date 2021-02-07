@@ -414,11 +414,12 @@ def is_new_redundant2(s, examples):
 
     #split
     splitlist = unrolled_state.split2()
+    #print("prior " + str(splitlist))
     list(map(lambda x: x.spreadAll(), splitlist))
     splitlist = list(map(repr, splitlist))
     splitset = set(splitlist)
     splitlist = list(splitset)
-
+    #print(splitlist)
 
     #check part
     for state in splitlist:
@@ -432,3 +433,56 @@ def is_new_redundant2(s, examples):
 
 
 
+def is_new_redundant3(s, examples):
+    #split
+    splitlist = s.split2()
+    #print("split "+ str(splitlist))
+
+    # unroll
+    unrolllist = []
+    for regex in splitlist:
+        tmp = regex.unroll3()
+        if len(tmp)==1:
+            unrolllist.extend(tmp)
+        else:
+            #print([regex.unrolled() for regex in tmp])
+            unrolllist.extend(list(filter(lambda x: x.unrolled(), tmp)))
+    #print("unroll "  + str(unrolllist))
+
+
+    list(map(lambda x: x.spreadAll(), unrolllist))
+
+    #중복제거
+    unrolllist = list(map(repr, unrolllist))
+    unrollset = set(unrolllist)
+    unrolllist = list(unrollset)
+
+
+    #check part
+    for state in unrolllist:
+        count = 0
+        for string in examples.getPos():
+            if membership(state, string):
+                count = count + 1
+        if count == 0:
+            return True
+    return False
+
+def is_new_redundant4(s, examples):
+    result = s.unroll_split2(False)
+    list(map(lambda x: x.spreadAll(), result))
+
+    # 중복제거
+    result = list(map(repr, result))
+    resultset = set(result)
+    result = list(resultset)
+
+    # check part
+    for state in result:
+        count = 0
+        for string in examples.getPos():
+            if membership(state, string):
+                count = count + 1
+        if count == 0:
+            return True
+    return False

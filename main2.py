@@ -68,20 +68,21 @@ while not w.empty() and not finished:
             else:
                 scanned.add(repr(k))
 
+            checker = False
+            if repr(new_elem) == '0|1':
+                checker = True
 
-            if type(new_elem)==type(Character('0')) and is_pdead(k, examples):
+            if (type(new_elem)==type(Character('0')) or checker)and is_pdead(k, examples):
                 #print(repr(k), "is pdead")
                 continue
 
-            if (type(new_elem)==type(Character('0')) or type(new_elem)==type(KleenStar()) or type(new_elem)==type(Question())) and is_ndead(k, examples):
+            if (type(new_elem)==type(Character('0')) or type(new_elem)==type(KleenStar()) or type(new_elem)==type(Question()) or checker) and is_ndead(k, examples):
                 #print(repr(k), "is ndead")
                 continue
 
 
-
-
-            if (type(new_elem) == type(KleenStar()) or type(new_elem) == type(Question())) and k.kok():
-                print(repr(k), "is kok")
+            if k.starnormalform():
+                #print(repr(k), "starNormalForm")
                 continue
 
             if type(new_elem) == type(Question()) and k.OQ():
@@ -91,17 +92,12 @@ while not w.empty() and not finished:
             if k.kc_qc():
                 #print(repr(k), "is kc_qc")
                 continue
-            if k.starnormalform():
-                print(repr(k), "starNormalForm")
-                continue
 
             if k.equivalent_concat():
                 #print(repr(k), "is equivalent_concat")
                 continue
 
-            checker=False
-            if repr(new_elem)=='0|1':
-                checker=True
+
                 
             #if type(new_elem)==type(Character('0')) or checker:
 
@@ -117,11 +113,26 @@ while not w.empty() and not finished:
                 #print(repr(k), "is equivalent_KO")
                 continue
 
+            filter = False
+            #print(k)
+            if is_new_redundant3(k, examples):
+                #print(repr(k), "is redundant2")
+                filter = True
+                continue
+
             '''if is_new_redundant2(k, examples):
                 #print(repr(k), "is redundant")
+                if not filter:
+                    print(repr(k), "only prior")
                 continue'''
 
-            print(k)
+            '''if filter:
+                print(repr(k), "only new")
+                continue'''
+
+
+
+            #print(k)
             if not k.hasHole():
                 if is_solution(repr(k), examples, membership):
                     end = time.time()
