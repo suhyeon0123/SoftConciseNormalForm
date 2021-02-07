@@ -55,11 +55,10 @@ while not w.empty() and not finished:
             #print(repr(s), repr(new_elem))
 
             k = copy.deepcopy(s)
-
             if not k.spread(new_elem):
                 #print("false "+ new_elem)
                 continue
-
+            print(k)
             traversed += 1
             if repr(k) in scanned:
                 # print("Already scanned?", repr(k))
@@ -96,8 +95,9 @@ while not w.empty() and not finished:
             if k.equivalent_concat():
                 #print(repr(k), "is equivalent_concat")
                 continue
-
-
+            if ('(00)?0?' in repr(k)) or ('(11)?1?' in repr(k)) or ('0?(00)?' in repr(k)) or ('1?(11)?' in repr(k)):
+                print(repr(k), "is concatQ")
+                continue
                 
             #if type(new_elem)==type(Character('0')) or checker:
 

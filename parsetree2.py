@@ -573,16 +573,17 @@ class RE:
                     if repr(self.list[self.checksum - 1].r) == repr(self.list[self.checksum].r):
                         return True
 
-            '''#single regex
+
+            #single regex
             if self.checksum != 0 and self.checksum != 1:
                 for index, regex in enumerate(self.list):
                     if index<self.checksum and (regex.type == Type.K or regex.type == Type.Q) and regex.r.type == Type.C:
                         if len(regex.r.list) == self.checksum - index:
                             tmp = Concatenate()
-                            tmp.list = self.list[index:self.checksum+1]
-                            if repr(regex) == repr(tmp):
+                            tmp.list = self.list[index+1:self.checksum+1]
+                            if repr(regex.r) == repr(tmp):
                                 print("x")
-                                return True'''
+                                return True
 
             return any(list(i.equivalent_concat() for i in self.list))
 
@@ -661,6 +662,18 @@ class RE:
                                 count += 1
                         if count == len(self.r.list) and len(self.r.list)<=3:
                             return True
+
+                    # single regex
+                    if self.r.checksum != 0 and self.r.checksum != 1 and (
+                                    regex.type == Type.K or regex.type == Type.Q) and regex.r.type == Type.C:
+                        if len(regex.r.list) <= index:
+                            tmp = Concatenate()
+                            tmp.list = self.r.list[index - len(regex.r.list):index]
+                            print(tmp)
+                            print(regex.r)
+                            if repr(regex.r) == repr(tmp):
+                                print("xx")
+                                return True
 
                 '''# or 안에 concat확인
                 for regex in self.r.list:
