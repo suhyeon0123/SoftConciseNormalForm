@@ -82,36 +82,48 @@ while not w.empty() and not finished:
 
             # Equivalent Pruning
             if k.starnormalform():
-                #print(repr(k), "starNormalForm")
+                # print(repr(k), "starNormalForm")
+                continue
+
+            if k.redundant_concat1():
+                # print("concat1")
+                continue
+
+            if k.redundant_concat2():
+                # print("concat2")
+                continue
+
+            if k.KCK():
+                # print(repr(k), "is kc_qc")
+                continue
+
+            if k.KCQ():
+                #print(repr(k), "is kc_qc")
+                continue
+
+            if k.QC():
+                # print(repr(k), "is kc_qc")
+                continue
+
+            if ('(00)?0?' in repr(k)) or ('(11)?1?' in repr(k)) or ('0?(00)?' in repr(k)) or ('1?(11)?' in repr(k)) or (
+                    '(000?)*' in repr(k)) or ('(111?)*' in repr(k)):
+                # print(repr(k), "is concatQ")
                 continue
 
             if type(new_elem) == type(Question()) and k.OQ():
-                #print(repr(k), "is OQ")
-                continue
-
-            if k.equivalent_concat():
-                #print(repr(k), "is equivalent_concat")
-                continue
-
-            if k.kc_qc():
-                print(repr(k), "is kc_qc")
-                continue
-
-
-            if ('(00)?0?' in repr(k)) or ('(11)?1?' in repr(k)) or ('0?(00)?' in repr(k)) or ('1?(11)?' in repr(k)):
-                #print(repr(k), "is concatQ")
-                continue
-
-            if k.prefix():
-                #print(repr(k), "is prefix")
+                # print(repr(k), "is OQ")
                 continue
 
             if is_orinclusive(k):
-                #print(repr(k), "is orinclusive")
+                # print(repr(k), "is orinclusive")
                 continue
 
-            if is_equivalent_K(k):
-                #print(repr(k), "is equivalent_KO")
+            if k.prefix():
+                # print(repr(k), "is prefix")
+                continue
+
+            if k.sigmastar():
+                # print(repr(k), "is equivalent_KO")
                 continue
 
             # Redundant Pruning
