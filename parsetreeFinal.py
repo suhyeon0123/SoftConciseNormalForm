@@ -38,22 +38,14 @@ def is_inclusive(superset, subset):
             if is_inclusive(KleenStar(regex),subset):
                 return True
     # RR -> R*
-    '''if superset.type == Type.K and subset.type == Type.c:
-        if superset.r.type != Type.C:
-            length = 1
-        else:
-            length = len(superset.r.list)
-        if len(subset.list) % length == 0:
-            ox = True
-            for i in range(len(subset.list) / length):
-                tmp = Concatenate()
-                tmp.list = subset.list[i*length:(i+1)*length]
-                if repr(tmp) == repr(superset.r):
-                    pass
-                else:
-                    ox = False
-            if ox:
-                return True'''
+    '''if superset.type == Type.K and superset.r.type == Type.C and len(superset.r.list) == 2 and subset.type == Type.C and len(subset.list) == 4:
+        tmp1 = Concatenate()
+        tmp1.list = subset.list[0:2]
+        tmp2 = Concatenate()
+        tmp2.list = subset.list[2:4]
+        if repr(superset.r) == repr(tmp1) and repr(superset.r) == repr(tmp2):
+            print("dd")
+            return True'''
 
 
 
@@ -485,7 +477,6 @@ class RE:
 
                             if lefteps and righteps and (left or is_inclusive(KleenStar(regex), tmp1)) and (
                                     right or is_inclusive(KleenStar(regex), tmp2)):
-                                print("new")
                                 return True
 
             return self.r.KCQ()
