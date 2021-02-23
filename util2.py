@@ -5,8 +5,7 @@ import re2 as re
 
 from FAdo.cfg import *
 from xeger import Xeger
-#from parsetree import*
-from parsetree2 import*
+from parsetreeFinal import*
 import time
 from torch.nn.utils.rnn import pad_sequence
 import torch
@@ -178,7 +177,7 @@ def is_overlap(s):
     return s.overlap()
 
 def is_equivalent_K(s):
-    return s.equivalent_K()
+    return s.sigmastar()
 
 def is_equivalent2(s):
     return s.equivalent2()
@@ -373,75 +372,15 @@ def is_new_redundant2(s, examples):
             return True
     return False
 
-def is_new_redundant2(s, examples):
-
-    #unroll
-    if s.type == Type.K:
-        s1 = copy.deepcopy(s.r)
-        s2 = copy.deepcopy(s.r)
-        s3 = copy.deepcopy(s)
-        unrolled_state = Concatenate(s1, s2, s3)
-    else:
-        unrolled_state = copy.deepcopy(s)
-        unrolled_state.unroll2()
-    #unrolled_state = copy.deepcopy(s)
-
-    #split
-    split = unrolled_state.split2()
-    list(map(lambda x: x.spreadAll(), split))
-    split = list(map(repr, split))
-    splitset = set(split)
-    split = list(splitset)
-
-
-    #check part
-    for state in split:
-        count = 0
-        for string in examples.getPos():
-            if membership(state, string):
-                count = count + 1
-        if count == 0:
-            return True
-    return False
-
-def is_new_redundant2(s, examples):
-
-    #unroll
-    unrolled_state = copy.deepcopy(s)
-    unrolled_state.unroll2()
-
-    #unrolled_state = copy.deepcopy(s)
-
-    #split
-    splitlist = unrolled_state.split2()
-    #print("prior " + str(splitlist))
-    list(map(lambda x: x.spreadAll(), splitlist))
-    splitlist = list(map(repr, splitlist))
-    splitset = set(splitlist)
-    splitlist = list(splitset)
-    #print(splitlist)
-
-    #check part
-    for state in splitlist:
-        count = 0
-        for string in examples.getPos():
-            if membership(state, string):
-                count = count + 1
-        if count == 0:
-            return True
-    return False
-
-
-
 def is_new_redundant3(s, examples):
     #split
-    splitlist = s.split2()
+    splitlist = s.split()
     #print("split "+ str(splitlist))
 
     # unroll
     unrolllist = []
     for regex in splitlist:
-        tmp = regex.unroll3()
+        tmp = regex.unroll()
         if len(tmp)==1:
             unrolllist.extend(tmp)
         else:
@@ -460,25 +399,6 @@ def is_new_redundant3(s, examples):
 
     #check part
     for state in unrolllist:
-        count = 0
-        for string in examples.getPos():
-            if membership(state, string):
-                count = count + 1
-        if count == 0:
-            return True
-    return False
-
-def is_new_redundant4(s, examples):
-    result = s.unroll_split2(False)
-    list(map(lambda x: x.spreadAll(), result))
-
-    # 중복제거
-    result = list(map(repr, result))
-    resultset = set(result)
-    result = list(resultset)
-
-    # check part
-    for state in result:
         count = 0
         for string in examples.getPos():
             if membership(state, string):

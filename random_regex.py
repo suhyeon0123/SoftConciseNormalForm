@@ -8,9 +8,6 @@ limit = 5
 
 
 
-
-
-
 def rand_example(limit):
     regex = RE()
     for count in range(limit):
@@ -29,7 +26,7 @@ for index, i in enumerate(posset):
 exit()'''
 
 
-for no in range(1, 1000):
+for no in range(1, 200):
     regex = rand_example(limit)
 
     x = Xeger()

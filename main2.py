@@ -39,7 +39,6 @@ prevCost = 0
 finished = False
 
 
-
 while not w.empty() and not finished:
     tmp = w.get()
     s = tmp[1]
@@ -50,7 +49,7 @@ while not w.empty() and not finished:
 
     #print("state : ", s, " cost: ",cost)
     if hasHole:
-        for j, new_elem in enumerate([Character('0'), Character('1'), Or(),  Or(Character('0'),Character('1')), Concatenate(Hole(),Hole()), KleenStar(),Question()]):
+        for j, new_elem in enumerate([Character('0'), Character('1'), Or(),  Or(Character('0'),Character('1')), Concatenate(Hole(),Hole()), KleenStar(), Question()]):
 
             #print(repr(s), repr(new_elem))
 
@@ -58,7 +57,7 @@ while not w.empty() and not finished:
             if not k.spread(new_elem):
                 #print("false "+ new_elem)
                 continue
-            print(k)
+
             traversed += 1
             if repr(k) in scanned:
                 # print("Already scanned?", repr(k))
@@ -71,7 +70,8 @@ while not w.empty() and not finished:
             if repr(new_elem) == '0|1':
                 checker = True
 
-            if (type(new_elem)==type(Character('0')) or checker)and is_pdead(k, examples):
+            # Dead Pruning
+            if (type(new_elem)==type(Character('0')) or checker) and is_pdead(k, examples):
                 #print(repr(k), "is pdead")
                 continue
 
@@ -80,6 +80,7 @@ while not w.empty() and not finished:
                 continue
 
 
+            # Equivalent Pruning
             if k.starnormalform():
                 #print(repr(k), "starNormalForm")
                 continue
@@ -88,18 +89,18 @@ while not w.empty() and not finished:
                 #print(repr(k), "is OQ")
                 continue
 
-            if k.kc_qc():
-                #print(repr(k), "is kc_qc")
-                continue
-
             if k.equivalent_concat():
                 #print(repr(k), "is equivalent_concat")
                 continue
-            if ('(00)?0?' in repr(k)) or ('(11)?1?' in repr(k)) or ('0?(00)?' in repr(k)) or ('1?(11)?' in repr(k)):
-                print(repr(k), "is concatQ")
+
+            if k.kc_qc():
+                print(repr(k), "is kc_qc")
                 continue
-                
-            #if type(new_elem)==type(Character('0')) or checker:
+
+
+            if ('(00)?0?' in repr(k)) or ('(11)?1?' in repr(k)) or ('0?(00)?' in repr(k)) or ('1?(11)?' in repr(k)):
+                #print(repr(k), "is concatQ")
+                continue
 
             if k.prefix():
                 #print(repr(k), "is prefix")
@@ -113,24 +114,14 @@ while not w.empty() and not finished:
                 #print(repr(k), "is equivalent_KO")
                 continue
 
-            filter = False
-            #print(k)
-            if is_new_redundant3(k, examples):
-                #print(repr(k), "is redundant2")
-                filter = True
-                continue
-
+            # Redundant Pruning
             '''if is_new_redundant2(k, examples):
                 #print(repr(k), "is redundant")
-                if not filter:
-                    print(repr(k), "only prior")
                 continue'''
 
-            '''if filter:
-                print(repr(k), "only new")
-                continue'''
-
-
+            if is_new_redundant3(k, examples):
+                # print(repr(k), "is redundant")
+                continue
 
             #print(k)
             if not k.hasHole():
