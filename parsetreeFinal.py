@@ -793,14 +793,19 @@ class KleenStar(RE):
         tmp = Concatenate(self.r, self.r)
         #print("rerp: " + str(tmp.repr4()))
         for level_str in tmp.repr4():
-            result.append([2, '{}'.format(level_str[1]) + repr(self)])
+            if '@epsilon' != level_str[1]:
+                result.append([2, '{}'.format(level_str[1]) + repr(self)])
+            else:
+                result.append([2, '{}'.format(repr(self))])
 
 
         for level_str in self.r.repr4():
             if level_str[0] > self.level:
-                result.append([self.level, '({})*'.format(level_str[1])])
+                if '@epsilon' != level_str[1]:
+                    result.append([self.level, '({})*'.format(level_str[1])])
             else:
-                result.append([self.level, '{}*'.format(level_str[1])])
+                if '@epsilon' != level_str[1]:
+                    result.append([self.level, '{}*'.format(level_str[1])])
 
         return result
 
@@ -878,11 +883,25 @@ class Question(RE):
     def repr4(self):
         result = []
 
-        for level_str in self.r.repr4():
+        '''for level_str in self.r.repr4():
             if level_str[0] > self.level:
                 result.append([self.level, '({})?'.format(level_str[1])])
             else:
-                result.append([self.level, '{}?'.format(level_str[1])])
+                result.append([self.level, '{}?'.format(level_str[1])])'''
+
+        for level_str in self.r.repr4():
+            if level_str[0] > self.level:
+                if '@epsilon' != level_str[1]:
+                    result.append([level_str[0], level_str[1]])
+            else:
+                if '@epsilon' != level_str[1]:
+                    result.append([level_str[0], level_str[1]])
+
+        for level_str in self.r.repr4():
+            if level_str[0] > self.level:
+                result.append([0, '@epsilon'])
+            else:
+                result.append([0, '@epsilon'])
 
         return result
 
@@ -992,12 +1011,14 @@ class Concatenate(RE):
                     str_list = []
                     for index3 in range(len(self.list)):
                         if index == index3:
-                            str_list.append(bigbatch[index][index2])
+                            if '@epsilon' != bigbatch[index][index2]:
+                                str_list.append(bigbatch[index][index2])
                         else:
                             if self.list[index3].type == Type.U :
                                 str_list.append('({})'.format(repr(self.list[index3])))
                             else:
-                                str_list.append(repr(self.list[index3]))
+                                if '@epsilon' != repr(self.list[index3]):
+                                    str_list.append(repr(self.list[index3]))
 
                     result.append([self.level, ''.join(str_list)])
 

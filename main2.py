@@ -151,13 +151,15 @@ while not w.empty() and not finished:
                 #print(repr(k), "is redundant")
                 continue'''
 
-            if repr(new_elem) != '#|#' and is_new_redundant4(k, examples):
-                #print(repr(k), "is redundant")
-                continue
+
 
             '''if repr(new_elem) != '#|#' and is_new_redundant3(k, examples):
-                print(repr(k), "is redundant")
+                #print(repr(k), "is redundant")
                 continue'''
+            # because of #?
+            if (new_elem.type == Type.Q or checker) and is_new_redundant4(k, examples):
+                #print(repr(k), "is redundant")
+                continue
 
 
 
