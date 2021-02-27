@@ -188,35 +188,23 @@ def is_orinclusive(s):
 
 
 def is_pdead(s, examples):
-    s_copy = copy.deepcopy(s)
-    s_copy.spreadAll()
-    s = repr(s_copy)
-
-    if s == '@emptyset':
-        return True
+    s_spreadAll = s.repr2()
 
     for string in examples.getPos():
-        if not membership(s, string):
+        if not membership(s_spreadAll, string):
             return True
     return False
 
 def is_ndead(s, examples):
-    s_copy = copy.deepcopy(s)
-    s_copy.spreadNp()
-    s = repr(s_copy)
-    #print(s)
-    if s == '@emptyset':
-        #print("not dead by blank", ss)
+    s_spreadNP = s.repr3()
+
+    if s_spreadNP == '@emptyset':
         return False
 
     for string in examples.getNeg():
-        if string == '' and membership(s, string):
-            #print("dead by blank", ss)
+        if membership(s_spreadNP, string):
             return True
-        elif membership(s, string):
-            #print("not dead by blank", ss)
-            return True
-    #print("not dead by blank", ss)
+
     return False
 
 
@@ -349,13 +337,15 @@ def is_new_redundant2(s, examples):
 
     #unroll
     unrolled_state = copy.deepcopy(s)
-    unrolled_state.unroll2()
+    unrolled_state.prior_unroll()
 
     #unrolled_state = copy.deepcopy(s)
 
     #split
-    split = unrolled_state.split2()
+    split = unrolled_state.split()
     list(map(lambda x: x.spreadAll(), split))
+
+    #중복제거
     split = list(map(repr, split))
     splitset = set(split)
     split = list(splitset)
@@ -368,37 +358,97 @@ def is_new_redundant2(s, examples):
             if membership(state, string):
                 count = count + 1
         if count == 0:
-            #print(next)
             return True
     return False
 
 def is_new_redundant3(s, examples):
+
+    tmp = s.unroll()
+    if len(tmp) == 1:
+        unrolllist = tmp
+    else:
+        unrolllist = list(filter(lambda x: x.unrolled(), tmp))
+
     #split
-    splitlist = s.split()
-    #print("split "+ str(splitlist))
-
-    # unroll
-    unrolllist = []
-    for regex in splitlist:
-        tmp = regex.unroll()
-        if len(tmp)==1:
-            unrolllist.extend(tmp)
-        else:
-            #print([regex.unrolled() for regex in tmp])
-            unrolllist.extend(list(filter(lambda x: x.unrolled(), tmp)))
-    #print("unroll "  + str(unrolllist))
-
-
-    list(map(lambda x: x.spreadAll(), unrolllist))
+    splitlist = []
+    for regex in unrolllist:
+        splitlist.extend(regex.split())
+    list(map(lambda x: x.spreadAll(), splitlist))
 
     #중복제거
-    unrolllist = list(map(repr, unrolllist))
-    unrollset = set(unrolllist)
-    unrolllist = list(unrollset)
+    splitlist = list(map(repr, splitlist))
+    splitset = set(splitlist)
+    splitlist = list(splitset)
 
 
     #check part
-    for state in unrolllist:
+    for state in splitlist:
+        count = 0
+        for string in examples.getPos():
+            if membership(state, string):
+                count = count + 1
+        if count == 0:
+            return True
+    return False
+
+def is_new_redundant3(s, examples):
+    #unroll
+    unrolllist = s.unroll10()
+
+    #split
+    splitlist = []
+    for regex in unrolllist:
+        splitlist.extend(regex.split())
+    '''print("s="+repr(s))
+    splitlist = s.unsp()
+    print(splitlist)'''
+    '''tmp = s. unsp()
+    if len(tmp) != len(splitlist):
+        print("d")
+    for index in range(len(splitlist)):
+        if repr(tmp[index]) != repr(splitlist[index]):
+            print("dd")'''
+
+
+    tmp = list(lis[1] for lis in s.repr4())
+    tmp2 = []
+    for item in tmp:
+        item_mod = item.replace('#','(0+1)*').replace('**','*').replace('*?','*').replace('+','|')
+        tmp2.append(item_mod)
+
+    #print(list(str.replace('#','(0+1)*').replace('**','*').replace('*?','*') for str in tmp))
+    #print(list(lis[1] for lis in s.repr4()))
+
+    list(map(lambda x: x.spreadAll(), splitlist))
+
+    #중복제거
+    splitlist = list(map(repr, splitlist))
+    splitset = set(splitlist)
+    splitlist = list(splitset)
+    '''print(str(splitlist))
+    print(tmp2)'''
+
+    #splitlist = tmp2
+    #check part
+    for state in splitlist:
+        count = 0
+        for string in examples.getPos():
+            if membership(state, string):
+                count = count + 1
+        if count == 0:
+            return True
+    return False
+
+def is_new_redundant4(s, examples):
+    tmp = list(lis[1] for lis in s.repr4())
+    unsp = []
+    for item in tmp:
+        item_mod = item.replace('#','(0+1)*').replace('**','*').replace('*?','*').replace('+','|')
+        unsp.append(item_mod)
+
+
+    #check part
+    for state in unsp:
         count = 0
         for string in examples.getPos():
             if membership(state, string):

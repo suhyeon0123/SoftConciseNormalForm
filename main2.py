@@ -15,7 +15,13 @@ import faulthandler
 
 faulthandler.enable()
 
-
+deadtime = 0
+pruningtime = 0
+spreadtime =0
+scantime = 0
+queuetime = 0
+copytime = 0
+solutionputtime = 0
 
 w = PriorityQueue()
 
@@ -53,39 +59,52 @@ while not w.empty() and not finished:
 
             #print(repr(s), repr(new_elem))
 
+            timestamp3 = time.time()
             k = copy.deepcopy(s)
+            copytime += time.time() - timestamp3
+
+            timestamp5 = time.time()
             if not k.spread(new_elem):
                 #print("false "+ new_elem)
+                spreadtime += time.time() - timestamp5
                 continue
+            spreadtime += time.time() - timestamp5
 
+            timestamp4 = time.time()
             traversed += 1
             if repr(k) in scanned:
                 # print("Already scanned?", repr(k))
                 # print(list(scanned))
+                scantime += time.time() - timestamp4
                 continue
             else:
                 scanned.add(repr(k))
+                scantime += time.time() - timestamp4
+
+
 
             checker = False
-            if repr(new_elem) == '0|1':
+            if repr(new_elem) == '0|1' or new_elem.type == Type.CHAR:
                 checker = True
 
+            timestamp2 = time.time()
             # Dead Pruning
-            if (type(new_elem)==type(Character('0')) or checker) and is_pdead(k, examples):
+            if checker and is_pdead(k, examples):
                 #print(repr(k), "is pdead")
                 continue
 
-            if (type(new_elem)==type(Character('0')) or type(new_elem)==type(KleenStar()) or type(new_elem)==type(Question()) or checker) and is_ndead(k, examples):
+            if (new_elem.type==Type.K or new_elem.type==Type.Q or checker) and is_ndead(k, examples):
                 #print(repr(k), "is ndead")
                 continue
+            deadtime += time.time() - timestamp2
 
-
+            timestamp = time.time()
             # Equivalent Pruning
-            if k.starnormalform():
+            if (new_elem.type == Type.K or new_elem.type == Type.Q) and k.starnormalform():
                 # print(repr(k), "starNormalForm")
                 continue
 
-            if k.redundant_concat1():
+            if checker and k.redundant_concat1():
                 # print("concat1")
                 continue
 
@@ -93,48 +112,61 @@ while not w.empty() and not finished:
                 # print("concat2")
                 continue
 
-            if k.KCK():
+            if checker and k.KCK():
                 # print(repr(k), "is kc_qc")
                 continue
 
-            if k.KCQ():
-                #print(repr(k), "is kc_qc")
+            if (new_elem.type == Type.K or new_elem.type == Type.Q or checker) and k.KCQ():
+                #print(repr(k), "KCQ")
                 continue
 
-            if k.QC():
+            if checker and k.QC():
                 # print(repr(k), "is kc_qc")
                 continue
 
-            if ('(00)?0?' in repr(k)) or ('(11)?1?' in repr(k)) or ('0?(00)?' in repr(k)) or ('1?(11)?' in repr(k)) or (
+            '''if ('(00)?0?' in repr(k)) or ('(11)?1?' in repr(k)) or ('0?(00)?' in repr(k)) or ('1?(11)?' in repr(k)) or (
                     '(000?)*' in repr(k)) or ('(111?)*' in repr(k)):
                 # print(repr(k), "is concatQ")
-                continue
+                continue'''
 
-            if type(new_elem) == type(Question()) and k.OQ():
+            if new_elem.type == Type.Q and k.OQ():
                 # print(repr(k), "is OQ")
                 continue
 
-            if is_orinclusive(k):
+            if checker and is_orinclusive(k):
                 # print(repr(k), "is orinclusive")
                 continue
 
-            if k.prefix():
+            if checker and k.prefix():
                 # print(repr(k), "is prefix")
                 continue
 
-            if k.sigmastar():
+            if (new_elem.type == Type.K or new_elem.type == Type.Q or checker) and k.sigmastar():
                 # print(repr(k), "is equivalent_KO")
                 continue
 
+            pruningtime += time.time() - timestamp
             # Redundant Pruning
             '''if is_new_redundant2(k, examples):
                 #print(repr(k), "is redundant")
                 continue'''
 
-            if is_new_redundant3(k, examples):
-                # print(repr(k), "is redundant")
+            if repr(new_elem) != '#|#' and is_new_redundant4(k, examples):
+                #print(repr(k), "is redundant")
                 continue
 
+            '''if repr(new_elem) != '#|#' and is_new_redundant3(k, examples):
+                print(repr(k), "is redundant")
+                continue'''
+
+
+
+
+
+            '''print("k: " + repr(k))
+            print(list(lis[1] for lis in k.repr4()))'''
+
+            timestamp6 = time.time()
             #print(k)
             if not k.hasHole():
                 if is_solution(repr(k), examples, membership):
@@ -144,10 +176,11 @@ while not w.empty() and not finished:
                     # print("Result RE:", repr(k), "Verified by FAdo:", is_solution(repr(k), examples, membership2))
                     print("Result RE:", repr(k))
                     finished = True
+                    solutionputtime += time.time() - timestamp6
                     break
 
             w.put((k.getCost(), k))
-
+            solutionputtime += time.time() - timestamp6
 
 
     if i % 1000 == 0:
@@ -159,7 +192,12 @@ print("count = ")
 print(i)
 print("answer = " + answer)
 
-
+print(pruningtime)
+print(deadtime)
+print(scantime)
+print(spreadtime)
+print(solutionputtime)
+print(copytime)
 
 
 
