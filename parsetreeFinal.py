@@ -3,6 +3,7 @@ import copy
 import re2 as re
 from config import *
 from enum import Enum
+from itertools import product
 
 class Type(Enum):
     HOLE = 0
@@ -81,14 +82,10 @@ class RE:
                         self.list.append(Hole())
                         return True
                     else:
-                        '''if case.type == Type.CHAR or repr(case) == '0|1':
-                                                self.checksum = index'''
                         self.list[index] = case
                         return True
                 elif regex.hasHole():
                     self.list[index].spread(case)
-                    '''if not self.list[index].hasHole():
-                        self.checksum = index'''
                     return True
             return False
 
@@ -155,22 +152,25 @@ class RE:
                 else:
                     self.list[index].spreadAll()
         elif self.type == Type.REGEX:
-            self.r.spreadAll()
+            if self.r.type == Type.HOLE:
+                self.r = KleenStar(Or(Character('0'), Character('1')))
+            else:
+                self.r.spreadAll()
 
-    def prior_unroll(self):
+
+    def prioryesq_unroll(self):
         self.string = None
 
-        if self.type == Type.Q:
-            self.r.prior_unroll()
-        elif self.type == Type.C or self.type == Type.U:
+        if self.type == Type.C or self.type == Type.U:
             for index, regex in enumerate(self.list):
                 if regex.type == Type.K:
+
                     s1 = copy.deepcopy(regex.r)
                     s2 = copy.deepcopy(regex.r)
                     s3 = copy.deepcopy(regex)
                     self.list[index] = Concatenate(s1, s2, s3)
                 else:
-                    self.list[index].prior_unroll()
+                    self.list[index].prioryesq_unroll()
         elif self.type == Type.REGEX:
             if self.r.type == Type.K:
                 s1 = copy.deepcopy(self.r.r)
@@ -178,7 +178,122 @@ class RE:
                 s3 = copy.deepcopy(self.r)
                 self.r= Concatenate(s1, s2, s3)
             else:
+                self.r.prioryesq_unroll()
+
+    def prior_unroll(self):
+        self.string = None
+
+        if self.type == Type.C or self.type == Type.U:
+            for index, regex in enumerate(self.list):
+                if regex.type == Type.K and not regex.allHole():
+                    s1 = regex.r
+                    s2 = regex.r
+                    s3 = regex
+                    self.list[index] = Concatenate(s1, s2, s3)
+                elif regex.type == Type.Q:
+                    self.list[index] = self.list[index].r
+                    self.list[index].prior_unroll()
+                else:
+                    self.list[index].prior_unroll()
+        elif self.type == Type.REGEX:
+            if self.r.type == Type.K and not self.r.allHole():
+                s1 = self.r.r
+                s2 = self.r.r
+                s3 = self.r
+
+                self.r= Concatenate(s1, s2, s3)
+            elif self.r.type == Type.Q:
+                self.r = self.r.r
                 self.r.prior_unroll()
+            else:
+                self.r.prior_unroll()
+
+
+
+
+
+    def noq_unroll(self):
+        self.string = None
+
+        if self.type == Type.Q:
+            self.r.noq_unroll()
+        elif self.type == Type.C or self.type == Type.U:
+            for index, regex in enumerate(self.list):
+                if regex.type == Type.K:
+                    s1 = regex.r
+                    s2 = regex.r
+                    s3 = regex
+                    a = Concatenate(s1, s2, s3)
+                    a.unrolled2 = True
+                    s4 = regex.r
+                    s4.noq_unroll()
+                    if s4.unrolled():
+                        self.list[index] = (Or(a, KleenStar(s4)))
+                    else:
+                        self.list[index] = a
+                elif regex.type == Type.Q:
+                    self.list[index] = self.list[index].r
+                    self.list[index].noq_unroll()
+                else:
+                    self.list[index].noq_unroll()
+
+        elif self.type == Type.REGEX:
+            if self.r.type == Type.K:
+                s1 = self.r.r
+                s2 = self.r.r
+                s3 = self.r
+                a = Concatenate(s1, s2, s3)
+                a.unrolled2 = True
+                s4 = self.r.r
+                s4.noq_unroll()
+                if s4.unrolled():
+                    self.r = Or(a,KleenStar(s4))
+                else:
+                    self.r = a
+            elif self.r.type == Type.Q:
+                self.r = self.r.r
+                self.r.noq_unroll()
+            else:
+                self.r.noq_unroll()
+
+
+    def new_unroll(self):
+        self.string = None
+
+        if self.type == Type.Q:
+            self.r.new_unroll()
+        elif self.type == Type.C or self.type == Type.U:
+            for index, regex in enumerate(self.list):
+                if regex.type == Type.K:
+                    s1 = copy.deepcopy(regex.r)
+                    s2 = copy.deepcopy(regex.r)
+                    s3 = copy.deepcopy(regex)
+                    a = Concatenate(s1, s2, s3)
+                    a.unrolled2 = True
+                    s4 = copy.deepcopy(regex.r)
+                    s4.new_unroll()
+                    if s4.unrolled():
+                        self.list[index] = (Or(a, KleenStar(s4)))
+                    else:
+                        self.list[index] = a
+                else:
+                    self.list[index].new_unroll()
+
+        elif self.type == Type.REGEX:
+            if self.r.type == Type.K:
+                s1 = copy.deepcopy(self.r.r)
+                s2 = copy.deepcopy(self.r.r)
+                s3 = copy.deepcopy(self.r)
+                a = Concatenate(s1, s2, s3)
+                a.unrolled2 = True
+                s4 = copy.deepcopy(self.r.r)
+                s4.new_unroll()
+                if s4.unrolled():
+                    self.r = Or(a,KleenStar(s4))
+                else:
+                    self.r = a
+            else:
+                self.r.new_unroll()
 
     def unroll(self):
         if self.type == Type.K:
@@ -211,6 +326,8 @@ class RE:
         else:
             return [self]
 
+
+
     def unroll10(self):
         if self.type == Type.K:
             s1 = copy.deepcopy(self.r)
@@ -226,6 +343,7 @@ class RE:
         elif self.type == Type.Q:
             return [Question(regex) for regex in self.r.unroll10()]
         elif self.type == Type.C or self.type == Type.U:
+            #이부분을 바꾸우어야함..
             result = []
             for index, regex in enumerate(self.list):
                 tmp = regex.unroll10()
@@ -238,6 +356,7 @@ class RE:
             if len(result) == 0:
                 result.append(copy.deepcopy(self))
             return result
+
         elif self.type == Type.REGEX:
             return [REGEX(regex) for regex in self.r.unroll10()]
         else:
@@ -347,6 +466,19 @@ class RE:
             return all(list(i.hasEps() for i in self.list))
         elif self.type == Type.U:
             return any(list(i.hasEps() for i in self.list))
+        else:
+            return False
+
+    def allHole(self):
+        if self.type == Type.K or self.type == Type.Q:
+            if self.r.allHole():
+                return True
+            else:
+                return False
+        elif self.type == Type.C or self.type == Type.U:
+            return all(list(i.allHole() for i in self.list))
+        elif self.type == Type.HOLE:
+            return True
         else:
             return False
 
@@ -666,6 +798,66 @@ class RE:
         else:
             return False
 
+    def alpha(self):
+        if self.type == Type.K:
+            if self.r.type == Type.C and len(self.r.list) == 2:
+                if self.r.list[1].type == Type.K and self.r.list[0] == self.r.list[1].r:
+                    return True
+                if self.r.list[0].type == Type.K and self.r.list[0].r == self.r.list[1]:
+                    return True
+                if self.r.list[1].type == Type.Q and self.r.list[0] == self.r.list[1].r:
+                    return True
+                if self.r.list[0].type == Type.Q and self.r.list[0].r == self.r.list[1]:
+                    return True
+
+            return self.r.alpha()
+
+        if self.type == Type.Q:
+            if self.r.type == Type.C and len(self.r.list) == 2:
+                if self.r.list[1].type == Type.K and self.r.list[0] == self.r.list[1].r:
+                    return True
+                if self.r.list[0].type == Type.K and self.r.list[0].r == self.r.list[1]:
+                    return True
+
+
+            return self.r.alpha()
+
+
+        elif self.type == Type.C:
+            for index, regex in enumerate(self.list):
+
+                if regex.type == Type.K:
+                    #x*x?
+                    if index+1 < len(self.list) and self.list[index+1].type == Type.Q and repr(regex.r) == repr(self.list[index+1].r):
+                        return True
+                    #x*x*
+                    if index+1 < len(self.list) and self.list[index+1].type == Type.K and repr(regex.r) == repr(self.list[index+1].r):
+                        return True
+                elif regex.type == Type.Q:
+                    #x?x*
+                    if index+1 < len(self.list) and self.list[index+1].type == Type.K and repr(regex.r) == repr(self.list[index+1].r):
+                        return True
+
+            return any(list(i.alpha() for i in self.list))
+
+        elif self.type == Type.U:
+
+            for index, regex in enumerate(self.list):
+                for index2, regex2 in enumerate(self.list):
+                    if index < index2 and (is_inclusive(regex, regex2) or is_inclusive(regex2, regex)):
+                        return True
+
+            for index, regex in enumerate(self.list):
+
+                if regex.alpha():
+                    return True
+
+            return False
+        elif self.type == Type.REGEX:
+            return self.r.alpha()
+        else:
+            return False
+
 
 
 class Hole(RE):
@@ -676,6 +868,19 @@ class Hole(RE):
         return '#'
     def repr4(self):
         return [[self.level, '#']]
+    def repr_unsp(self):
+        return [[self.level, '#']]
+    def reprunroll(self):
+        return [[self.level, '#']]
+    def reprsplit(self):
+        return [[self.level, '#']]
+    def reprAlpha(self):
+        return [[self.level, '#']]
+    def reprAlpha2(self):
+        return [[self.level, '#']]
+    def reprNew(self):
+        return [[self.level, '#']]
+
     def hasHole(self):
         return True
     def unrolled(self):
@@ -697,6 +902,17 @@ class REGEX(RE):
         return self.r.repr3()
     def repr4(self):
         return self.r.repr4()
+    def repr_unsp(self):
+        return self.r.repr_unsp()
+    def reprAlpha(self):
+        return self.r.reprAlpha()
+
+    def reprAlpha2(self):
+        return self.r.reprAlpha2()
+
+    def reprNew(self):
+        return self.r.reprNew()
+
     def hasHole(self):
         return self.r.hasHole()
     def unrolled(self):
@@ -727,6 +943,18 @@ class Character(RE):
     def repr3(self):
         return self.c
     def repr4(self):
+        return [[self.level, repr(self)]]
+    def repr_unsp(self):
+        return [[self.level, repr(self)]]
+    def reprunroll(self):
+        return [[self.level, repr(self)]]
+    def reprsplit(self):
+        return [[self.level, repr(self)]]
+    def reprAlpha(self):
+        return [[self.level, repr(self)]]
+    def reprAlpha2(self):
+        return [[self.level, repr(self)]]
+    def reprNew(self):
         return [[self.level, repr(self)]]
     def hasHole(self):
         return False
@@ -787,19 +1015,26 @@ class KleenStar(RE):
         else:
             return '{}*'.format(self.r.repr3())
 
+    def reprAlpha(self):
+        return [[1,repr(self)]]
+
+    def reprAlpha2(self):
+        return [[1, repr(self)]]
+
+    def reprNew(self):
+        return [[1, repr(self)]]
+
     def repr4(self):
         result = []
 
         tmp = Concatenate(self.r, self.r)
-        #print("rerp: " + str(tmp.repr4()))
         for level_str in tmp.repr4():
             if '@epsilon' != level_str[1]:
                 result.append([2, '{}'.format(level_str[1]) + repr(self)])
             else:
                 result.append([2, '{}'.format(repr(self))])
 
-
-        for level_str in self.r.repr4():
+        for level_str in self.r.reprunroll():
             if level_str[0] > self.level:
                 if '@epsilon' != level_str[1]:
                     result.append([self.level, '({})*'.format(level_str[1])])
@@ -808,6 +1043,52 @@ class KleenStar(RE):
                     result.append([self.level, '{}*'.format(level_str[1])])
 
         return result
+
+    def repr_unsp(self):
+        result = []
+
+        tmp = Concatenate(self.r, self.r)
+        for level_str in tmp.reprsplit():
+            result.append([2, '{}'.format(level_str[1]) + repr(self)])
+
+        return result
+
+
+    def reprunroll(self):
+        result = []
+
+        tmp = Concatenate(self.r, self.r)
+        for level_str in tmp.reprunroll():
+            if '@epsilon' != level_str[1]:
+                result.append([2, '{}'.format(level_str[1]) + repr(self)])
+            else:
+                result.append([2, '{}'.format(repr(self))])
+
+        for level_str in self.r.reprunroll():
+            if level_str[0] > self.level:
+                if '@epsilon' != level_str[1]:
+                    result.append([self.level, '({})*'.format(level_str[1])])
+            else:
+                if '@epsilon' != level_str[1]:
+                    result.append([self.level, '{}*'.format(level_str[1])])
+
+        return result
+
+    def reprsplit(self):
+        return [[1,repr(self)]]
+
+    def repr5(self):
+        result = []
+
+        tmp = Concatenate(self.r, self.r)
+        for level_str in tmp.repr5():
+            if '@epsilon' != level_str[1]:
+                result.append([2, '{}'.format(level_str[1]) + repr(self)])
+            else:
+                result.append([2, '{}'.format(repr(self))])
+
+        return result
+
 
     def hasHole(self):
         if not self.hasHole2:
@@ -880,28 +1161,61 @@ class Question(RE):
         else:
             return '{}?'.format(self.r.repr3())
 
+    def reprAlpha(self):
+        return [[1, repr(self)]]
+    def reprAlpha2(self):
+        return [[1, repr(self)]]
+
+    def reprNew(self):
+        result = []
+
+        for level_str in self.r.reprNew():
+            if '@epsilon' != level_str[1]:
+                result.append([level_str[0], level_str[1]])
+
+        for level_str in self.r.reprNew():
+            if level_str[0] > self.level:
+                result.append([0, '@epsilon'])
+            else:
+                result.append([0, '@epsilon'])
+
+        return result
+
     def repr4(self):
         result = []
 
-        '''for level_str in self.r.repr4():
-            if level_str[0] > self.level:
-                result.append([self.level, '({})?'.format(level_str[1])])
-            else:
-                result.append([self.level, '{}?'.format(level_str[1])])'''
+        for level_str in self.r.reprsplit():
+            if '@epsilon' != level_str[1]:
+                result.append([level_str[0], level_str[1]])
 
-        for level_str in self.r.repr4():
-            if level_str[0] > self.level:
-                if '@epsilon' != level_str[1]:
-                    result.append([level_str[0], level_str[1]])
-            else:
-                if '@epsilon' != level_str[1]:
-                    result.append([level_str[0], level_str[1]])
 
-        for level_str in self.r.repr4():
+        for level_str in self.r.reprsplit():
             if level_str[0] > self.level:
                 result.append([0, '@epsilon'])
             else:
                 result.append([0, '@epsilon'])
+
+        return result
+
+    def repr_unsp(self):
+        return self.r.repr_unsp()
+
+    def reprunroll(self):
+        return [[1,repr(self)]]
+
+    def reprsplit(self):
+        return self.r.reprsplit()
+
+    def repr5(self):
+        result = []
+
+        for level_str in self.r.repr5():
+            if level_str[0] > self.level:
+                if '@epsilon' != level_str[1]:
+                    result.append([self.level, '({})?'.format(level_str[1])])
+            else:
+                if '@epsilon' != level_str[1]:
+                    result.append([self.level, '{}?'.format(level_str[1])])
 
         return result
 
@@ -931,7 +1245,6 @@ class Concatenate(RE):
         self.level = 2
         self.string = None
         self.hasHole2 = True
-        self.checksum = 0
         self.type = Type.C
         self.unrolled2 = False
 
@@ -992,13 +1305,288 @@ class Concatenate(RE):
                     str_list.append(formatSide(regex))
         return ''.join(str_list)
 
+    def reprAlpha2(self):
+            result = []
+
+            for index1, regex in enumerate(self.list):
+                sp = regex.reprAlpha2()
+                if len(sp) != 1:
+                    for level_str in sp:
+                        str_list = []
+                        for index2, regex2 in enumerate(self.list):
+                            if index1 == index2:
+                                if level_str[0] > self.level:
+                                    str_list.append('({})'.format(level_str[1]))
+                                else:
+                                    str_list.append('{}'.format(level_str[1]))
+                            else:
+                                if regex2.type == Type.U:
+                                    str_list.append('({})'.format(repr(regex2)))
+                                else:
+                                    str_list.append(repr(regex2))
+                        result.append([self.level, ''.join(str_list)])
+
+
+            if not result:
+                return [[self.level, repr(self)]]
+
+            return result
+
+    def repr_unsp(self):
+            result = []
+
+            for index1, regex in enumerate(self.list):
+                sp = regex.repr_unsp()
+                if len(sp) != 1:
+                    for level_str in sp:
+                        str_list = []
+                        for index2, regex2 in enumerate(self.list):
+                            if index1 == index2:
+                                if level_str[0] > self.level:
+                                    str_list.append('({})'.format(level_str[1]))
+                                else:
+                                    str_list.append('{}'.format(level_str[1]))
+                            else:
+                                if regex2.type == Type.U:
+                                    str_list.append('({})'.format(repr(regex2)))
+                                else:
+                                    str_list.append(repr(regex2))
+                        result.append([self.level, ''.join(str_list)])
+
+
+            if not result:
+                return [[self.level, repr(self)]]
+
+            return result
+
+    def reprAlpha(self):
+            result = []
+
+            bigbatch = []
+            for regex in self.list:
+                batch = []
+                for level_str in regex.reprAlpha():
+                    if level_str[0] > self.level:
+                        batch.append('({})'.format(level_str[1]))
+                    else:
+                        batch.append('{}'.format(level_str[1]))
+                bigbatch.append(batch)
+
+            for index in range(len(self.list)):
+                if len(bigbatch[index]) != 1:
+                    for index2 in range(len(bigbatch[index])):
+                        str_list = []
+                        for index3 in range(len(self.list)):
+                            if index == index3:
+                                str_list.append(bigbatch[index][index2])
+                            else:
+                                if self.list[index3].type == Type.U:
+                                    str_list.append('({})'.format(repr(self.list[index3])))
+                                else:
+                                    str_list.append(repr(self.list[index3]))
+
+
+                        result.append([self.level, ''.join(str_list)])
+
+            if not result:
+                return [[self.level, repr(self)]]
+
+            return result
+
+    def reprNew(self):
+
+            result = []
+
+            bigbatch = []
+            for regex in self.list:
+                batch = []
+                for level_str in regex.reprNew():
+                    if level_str[0] > self.level:
+                        batch.append('({})'.format(level_str[1]))
+                    else:
+                        batch.append('{}'.format(level_str[1]))
+                bigbatch.append(batch)
+
+            for index in range(len(self.list)):
+                if len(bigbatch[index]) != 1:
+                    for index2 in range(len(bigbatch[index])):
+                        str_list = []
+                        for index3 in range(len(self.list)):
+                            if index == index3:
+                                if '@epsilon' != bigbatch[index][index2]:
+                                    str_list.append(bigbatch[index][index2])
+                            else:
+                                if self.list[index3].type == Type.U :
+                                    str_list.append('({})'.format(repr(self.list[index3])))
+                                else:
+                                    if '@epsilon' != repr(self.list[index3]):
+                                        str_list.append(repr(self.list[index3]))
+
+                        result.append([self.level, ''.join(str_list)])
+
+            if not result:
+                return [[self.level,repr(self)]]
+
+            return result
+
     def repr4(self):
+        result =[]
+
+        bigbatch = []
+        for regex in self.list:
+            batch = []
+            for level_str in regex.repr4():
+                if level_str[0] > self.level:
+                    batch.append('({})'.format(level_str[1]))
+                else:
+                    batch.append('{}'.format(level_str[1]))
+            bigbatch.append(batch)
+
+        combination = list(product(*bigbatch))
+
+        for i in range(len(combination)):
+            str_list = []
+            for j in range(len(combination[i])):
+                str_list.append(combination[i][j])
+            result.append([self.level, ''.join(str_list)])
+
+        if not result:
+            return [[self.level,repr(self)]]
+
+        return result
+
+
+    '''def repr4(self):
+
         result = []
 
         bigbatch = []
         for regex in self.list:
             batch = []
             for level_str in regex.repr4():
+                if level_str[0] > self.level:
+                    batch.append('({})'.format(level_str[1]))
+                else:
+                    batch.append('{}'.format(level_str[1]))
+            bigbatch.append(batch)
+
+        for index in range(len(self.list)):
+            if len(bigbatch[index]) != 1:
+                for index2 in range(len(bigbatch[index])):
+                    str_list = []
+                    for index3 in range(len(self.list)):
+                        if index == index3:
+                            if '@epsilon' != bigbatch[index][index2]:
+                                str_list.append(bigbatch[index][index2])
+                        else:
+                            if self.list[index3].type == Type.U :
+                                str_list.append('({})'.format(repr(self.list[index3])))
+                            else:
+                                if '@epsilon' != repr(self.list[index3]):
+                                    str_list.append(repr(self.list[index3]))
+
+                    result.append([self.level, ''.join(str_list)])
+
+        if not result:
+            return [[self.level,repr(self)]]
+
+        return result'''
+
+    def reprunroll(self):
+        result =[]
+
+        bigbatch = []
+        for regex in self.list:
+            batch = []
+            for level_str in regex.repr4():
+                if level_str[0] > self.level:
+                    batch.append('({})'.format(level_str[1]))
+                else:
+                    batch.append('{}'.format(level_str[1]))
+            bigbatch.append(batch)
+
+        combination = list(product(*bigbatch))
+        #print(combination)
+        for i in range(len(combination)):
+            str_list = []
+            for j in range(len(combination[i])):
+                str_list.append(combination[i][j])
+            result.append([self.level, ''.join(str_list)])
+
+        if not result:
+            return [[self.level,repr(self)]]
+
+        return result
+
+    '''def reprunroll(self):
+        result = []
+
+        bigbatch = []
+        for regex in self.list:
+            batch = []
+            for level_str in regex.reprunroll():
+                if level_str[0] > self.level:
+                    batch.append('({})'.format(level_str[1]))
+                else:
+                    batch.append('{}'.format(level_str[1]))
+            bigbatch.append(batch)
+
+        for index in range(len(self.list)):
+            if len(bigbatch[index]) != 1:
+                for index2 in range(len(bigbatch[index])):
+                    str_list = []
+                    for index3 in range(len(self.list)):
+                        if index == index3:
+                            if '@epsilon' != bigbatch[index][index2]:
+                                str_list.append(bigbatch[index][index2])
+                        else:
+                            if self.list[index3].type == Type.U :
+                                str_list.append('({})'.format(repr(self.list[index3])))
+                            else:
+                                if '@epsilon' != repr(self.list[index3]):
+                                    str_list.append(repr(self.list[index3]))
+
+                    result.append([self.level, ''.join(str_list)])
+
+        if not result:
+            return [[self.level,repr(self)]]
+
+        return result'''
+
+
+    def reprsplit(self):
+        result = []
+
+        for index1, regex in enumerate(self.list):
+            sp = regex.reprsplit()
+            if len(sp) != 1:
+                for level_str in sp:
+                    str_list = []
+                    for index2, regex2 in enumerate(self.list):
+                        if index1 == index2:
+                            if level_str[0] > self.level:
+                                str_list.append('({})'.format(level_str[1]))
+                            else:
+                                str_list.append('{}'.format(level_str[1]))
+                        else:
+                            if regex2.type == Type.U:
+                                str_list.append('({})'.format(repr(regex2)))
+                            else:
+                                str_list.append(repr(regex2))
+                    result.append([self.level, ''.join(str_list)])
+
+        if not result:
+            return [[self.level, repr(self)]]
+
+        return result
+
+    def repr5(self):
+        result = []
+
+        bigbatch = []
+        for regex in self.list:
+            batch = []
+            for level_str in regex.repr5():
                 if level_str[0] > self.level:
                     batch.append('({})'.format(level_str[1]))
                 else:
@@ -1117,11 +1705,59 @@ class Or(RE):
         else:
            return ''.join(str_list)
 
-    def repr4(self):
+    def reprAlpha(self):
         result = []
 
         for regex in self.list:
-            for level_str in regex.repr4():
+            for level_str in regex.reprAlpha():
+                if level_str[1] == '(0|1)*':
+                    continue
+                elif level_str[0] > self.level:
+                    result.append([level_str[0], '({})'.format(level_str[1])])
+                else:
+                    result.append([level_str[0], '{}'.format(level_str[1])])
+
+        if not result:
+            return [[1, '(0+1)*']]
+        return result
+
+    def reprAlpha2(self):
+        result = []
+
+        for regex in self.list:
+            for level_str in regex.reprAlpha2():
+                if level_str[1] == '(0|1)*':
+                    continue
+                elif level_str[0] > self.level:
+                    result.append([level_str[0], '({})'.format(level_str[1])])
+                else:
+                    result.append([level_str[0], '{}'.format(level_str[1])])
+
+        if not result:
+            return [[1, '(0+1)*']]
+        return result
+
+    def repr_unsp(self):
+        result = []
+
+        for regex in self.list:
+            for level_str in regex.repr_unsp():
+                if level_str[1] == '#':
+                    continue
+                elif level_str[0] > self.level:
+                    result.append([level_str[0], '({})'.format(level_str[1])])
+                else:
+                    result.append([level_str[0], '{}'.format(level_str[1])])
+
+        if not result:
+            return [[1, '(0|1)*']]
+        return result
+
+    def reprNew(self):
+        result = []
+
+        for regex in self.list:
+            for level_str in regex.reprNew():
                 if level_str[0] > self.level:
                     result.append([level_str[0], '({})'.format(level_str[1])])
                 else:
@@ -1131,6 +1767,38 @@ class Or(RE):
             return [[0, '#']]
         return result
 
+    def repr4(self):
+        result = []
+
+        for regex in self.list:
+            for level_str in regex.reprsplit():
+                if level_str[0] > self.level:
+                    result.append([level_str[0], '({})'.format(level_str[1])])
+                else:
+                    result.append([level_str[0], '{}'.format(level_str[1])])
+
+        if not result:
+            return [[0, '#']]
+        return result
+
+    def reprunroll(self):
+        return [[3,repr(self)]]
+
+    def reprsplit(self):
+        result = []
+
+        for regex in self.list:
+            for level_str in regex.reprsplit():
+                if level_str[1] == '#':
+                    continue
+                elif level_str[0] > self.level:
+                    result.append([level_str[0], '({})'.format(level_str[1])])
+                else:
+                    result.append([level_str[0], '{}'.format(level_str[1])])
+
+        if not result:
+            return [[1, '(0|1)*']]
+        return result
 
     def hasHole(self):
         if not self.hasHole2:

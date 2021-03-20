@@ -35,9 +35,9 @@ class Examples(object):
 
     def readFromFile(self, no):
         target_name = "no" + str(no) + "_*"
-        for file_name in os.listdir("./benchmarks"):
+        for file_name in os.listdir("benchmarks_changed"):
             if fnmatch.fnmatch(file_name, target_name):
-                f = open("./benchmarks/" + file_name, 'r')
+                f = open("./benchmarks_changed/" + file_name, 'r')
 
         lines = f.readlines()
         description = ''
@@ -63,9 +63,9 @@ class Examples(object):
 
     def readFromFile2(self, no):
         target_name = "no" + str(no)+".txt"
-        for file_name in os.listdir("./rand_benchmarks"):
+        for file_name in os.listdir("./rand3_benchmarks"):
             if fnmatch.fnmatch(file_name, target_name):
-                f = open("./rand_benchmarks/" + file_name, 'r')
+                f = open("./rand3_benchmarks/" + file_name, 'r')
 
         lines = f.readlines()
         description = ''

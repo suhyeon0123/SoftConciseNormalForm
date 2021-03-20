@@ -2,7 +2,7 @@ from parsetree_prune import*
 from xeger import Xeger
 import re2 as re
 
-limit = 5
+limit = 10
 
 
 
@@ -25,14 +25,22 @@ for index, i in enumerate(posset):
     print(i)
 exit()'''
 
-
-for no in range(1, 200):
+no = 0
+while no<1000:
     regex = rand_example(limit)
 
+    if len(repr(regex)) < 7:
+        continue
     x = Xeger()
+
+
     posset = set()
-    for i in range(0, 15):
+    endcount = 0
+    while endcount <50 and len(posset)<10 :
         posset.add(x.xeger(repr(regex)))
+        endcount +=1
+
+
 
     negset = set()
     for i in range(0, 1000):
@@ -50,14 +58,16 @@ for no in range(1, 200):
         if not bool(re.fullmatch(repr(regex), tmp)):
             negset.add(tmp + "\n")
 
-        if len(negset) == 15:
+        if len(negset) == 10:
             break
 
-    if not negset:
+    if not len(negset) == 10:
         continue
 
-    fname = "rand_benchmarks/no" + str(no) + ".txt"
-    f = open(fname, 'wt')
+
+
+    fname = "rand3_benchmarks/no" + str(no) + ".txt"
+    f = open(fname, 'w')
 
     f.write(repr(regex)+"\n")
 
@@ -72,4 +82,6 @@ for no in range(1, 200):
         if i!= '' : f.write(i)
 
     f.close()
+    print(no)
+    no +=1
 

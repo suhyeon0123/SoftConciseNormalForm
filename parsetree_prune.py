@@ -8,7 +8,7 @@ def get_rand_re(depth):
 
     case = random.randrange(0,depth)
 
-    if case > 2:
+    if case > 3:
         cha = True
     else:
         cha = False

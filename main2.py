@@ -53,41 +53,44 @@ while not w.empty() and not finished:
     prevCost = cost
     hasHole = s.hasHole()
 
-    #print("state : ", s, " cost: ",cost)
+    print("state : ", s, " cost: ",cost)
     if hasHole:
         for j, new_elem in enumerate([Character('0'), Character('1'), Or(),  Or(Character('0'),Character('1')), Concatenate(Hole(),Hole()), KleenStar(), Question()]):
 
             #print(repr(s), repr(new_elem))
 
-            timestamp3 = time.time()
             k = copy.deepcopy(s)
-            copytime += time.time() - timestamp3
+            if repr(k) == '(0|1)*1(0|1)##':
+                print("ddd")
 
-            timestamp5 = time.time()
             if not k.spread(new_elem):
                 #print("false "+ new_elem)
-                spreadtime += time.time() - timestamp5
                 continue
-            spreadtime += time.time() - timestamp5
 
-            timestamp4 = time.time()
             traversed += 1
             if repr(k) in scanned:
                 # print("Already scanned?", repr(k))
                 # print(list(scanned))
-                scantime += time.time() - timestamp4
                 continue
             else:
                 scanned.add(repr(k))
-                scantime += time.time() - timestamp4
 
+            if not k.hasHole():
+                if is_solution(repr(k), examples, membership):
+                    end = time.time()
+                    print("Spent computation time:", end-start)
+                    print("Iteration:", i, "\tCost:", cost, "\tScanned REs:", len(scanned), "\tQueue Size:", w.qsize(), "\tTraversed:", traversed)
+                    # print("Result RE:", repr(k), "Verified by FAdo:", is_solution(repr(k), examples, membership2))
+                    print("Result RE:", repr(k))
+                    finished = True
+                    break
 
 
             checker = False
             if repr(new_elem) == '0|1' or new_elem.type == Type.CHAR:
                 checker = True
 
-            timestamp2 = time.time()
+
             # Dead Pruning
             if checker and is_pdead(k, examples):
                 #print(repr(k), "is pdead")
@@ -96,9 +99,12 @@ while not w.empty() and not finished:
             if (new_elem.type==Type.K or new_elem.type==Type.Q or checker) and is_ndead(k, examples):
                 #print(repr(k), "is ndead")
                 continue
-            deadtime += time.time() - timestamp2
 
-            timestamp = time.time()
+
+            '''if k.alpha():
+                # print("alpha")
+                continue'''
+
             # Equivalent Pruning
             if (new_elem.type == Type.K or new_elem.type == Type.Q) and k.starnormalform():
                 # print(repr(k), "starNormalForm")
@@ -124,10 +130,6 @@ while not w.empty() and not finished:
                 # print(repr(k), "is kc_qc")
                 continue
 
-            '''if ('(00)?0?' in repr(k)) or ('(11)?1?' in repr(k)) or ('0?(00)?' in repr(k)) or ('1?(11)?' in repr(k)) or (
-                    '(000?)*' in repr(k)) or ('(111?)*' in repr(k)):
-                # print(repr(k), "is concatQ")
-                continue'''
 
             if new_elem.type == Type.Q and k.OQ():
                 # print(repr(k), "is OQ")
@@ -145,19 +147,18 @@ while not w.empty() and not finished:
                 # print(repr(k), "is equivalent_KO")
                 continue
 
-            pruningtime += time.time() - timestamp
-            # Redundant Pruning
-            '''if is_new_redundant2(k, examples):
-                #print(repr(k), "is redundant")
-                continue'''
 
-
-
-            '''if repr(new_elem) != '#|#' and is_new_redundant3(k, examples):
-                #print(repr(k), "is redundant")
-                continue'''
             # because of #?
-            if (new_elem.type == Type.Q or checker) and is_new_redundant4(k, examples):
+
+
+
+            #print("k: "+str(k))
+            '''if (new_elem.type == Type.Q or checker) and redundantAlpha3(k, examples):
+                #print(repr(k), "is redundant")
+                continue'''
+
+            # Redundant Pruning
+            if (new_elem.type == Type.Q or checker) and redundantAlpha3(k, examples):
                 #print(repr(k), "is redundant")
                 continue
 
@@ -165,35 +166,26 @@ while not w.empty() and not finished:
 
 
 
-            '''print("k: " + repr(k))
-            print(list(lis[1] for lis in k.repr4()))'''
-
-            timestamp6 = time.time()
             #print(k)
-            if not k.hasHole():
-                if is_solution(repr(k), examples, membership):
-                    end = time.time()
-                    print("Spent computation time:", end-start)
-                    print("Iteration:", i, "\tCost:", cost, "\tScanned REs:", len(scanned), "\tQueue Size:", w.qsize(), "\tTraversed:", traversed)
-                    # print("Result RE:", repr(k), "Verified by FAdo:", is_solution(repr(k), examples, membership2))
-                    print("Result RE:", repr(k))
-                    finished = True
-                    solutionputtime += time.time() - timestamp6
-                    break
+            if repr(k) == '(0|1)*1(0|1)##':
+                print("ddd")
+
+
 
             w.put((k.getCost(), k))
-            solutionputtime += time.time() - timestamp6
 
 
     if i % 1000 == 0:
         print("Iteration:", i, "\tCost:", cost, "\tScanned REs:", len(scanned), "\tQueue Size:", w.qsize(), "\tTraversed:", traversed)
+        end = time.time()
+        print("Spent computation time:", end - start)
     i = i+1
 
 print("--end--")
 print("count = ")
 print(i)
 print("answer = " + answer)
-
+print(str(time.time() - start))
 print(pruningtime)
 print(deadtime)
 print(scantime)

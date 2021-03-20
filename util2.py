@@ -333,33 +333,7 @@ def is_new_redundant(s, examples):
             return True
     return False
 
-def is_new_redundant2(s, examples):
 
-    #unroll
-    unrolled_state = copy.deepcopy(s)
-    unrolled_state.prior_unroll()
-
-    #unrolled_state = copy.deepcopy(s)
-
-    #split
-    split = unrolled_state.split()
-    list(map(lambda x: x.spreadAll(), split))
-
-    #중복제거
-    split = list(map(repr, split))
-    splitset = set(split)
-    split = list(splitset)
-
-
-    #check part
-    for state in split:
-        count = 0
-        for string in examples.getPos():
-            if membership(state, string):
-                count = count + 1
-        if count == 0:
-            return True
-    return False
 
 def is_new_redundant3(s, examples):
 
@@ -395,29 +369,12 @@ def is_new_redundant3(s, examples):
     #unroll
     unrolllist = s.unroll10()
 
+    print("new:" + str(unrolllist))
     #split
     splitlist = []
     for regex in unrolllist:
         splitlist.extend(regex.split())
-    '''print("s="+repr(s))
-    splitlist = s.unsp()
-    print(splitlist)'''
-    '''tmp = s. unsp()
-    if len(tmp) != len(splitlist):
-        print("d")
-    for index in range(len(splitlist)):
-        if repr(tmp[index]) != repr(splitlist[index]):
-            print("dd")'''
 
-
-    tmp = list(lis[1] for lis in s.repr4())
-    tmp2 = []
-    for item in tmp:
-        item_mod = item.replace('#','(0+1)*').replace('**','*').replace('*?','*').replace('+','|')
-        tmp2.append(item_mod)
-
-    #print(list(str.replace('#','(0+1)*').replace('**','*').replace('*?','*') for str in tmp))
-    #print(list(lis[1] for lis in s.repr4()))
 
     list(map(lambda x: x.spreadAll(), splitlist))
 
@@ -425,10 +382,7 @@ def is_new_redundant3(s, examples):
     splitlist = list(map(repr, splitlist))
     splitset = set(splitlist)
     splitlist = list(splitset)
-    '''print(str(splitlist))
-    print(tmp2)'''
 
-    #splitlist = tmp2
     #check part
     for state in splitlist:
         count = 0
@@ -439,8 +393,137 @@ def is_new_redundant3(s, examples):
             return True
     return False
 
+
+def is_new_redundant2(s, examples):
+    # unroll
+    unrolled_state = copy.deepcopy(s)
+
+    '''unrolled_state.prior_unroll()
+
+    # unrolled_state = copy.deepcopy(s)
+
+    # split
+    split = unrolled_state.split()'''
+
+    split = unrolled_state.unsp()
+
+    list(map(lambda x: x.spreadAll(), split))
+
+    # 중복제거
+    split = list(map(repr, split))
+    splitset = set(split)
+    split = list(splitset)
+
+    # check part
+    for state in split:
+        count = 0
+        for string in examples.getPos():
+            if membership(state, string):
+                count = count + 1
+        if count == 0:
+            return True
+    return False
+
 def is_new_redundant4(s, examples):
-    tmp = list(lis[1] for lis in s.repr4())
+    tmp = s.repr_unsp()
+    unsp = list(i.replace('#','(0|1)*') for _, i in tmp)
+
+
+    # check part
+    for state in unsp:
+        is_red = True
+        for string in examples.getPos():
+            if membership(state, string):
+                is_red = False
+                break
+        if is_red:
+            return True
+    return False
+
+def redundantAlpha3(s, examples):
+    # unroll
+    unrolled_state = copy.deepcopy(s)
+    unrolled_state.prior_unroll()
+    tmp = unrolled_state.reprAlpha2()
+    unsp = list(i.replace('#','(0|1)*') for _, i in tmp)
+
+    #check part
+    for state in unsp:
+        is_red = True
+        for string in examples.getPos():
+            if membership(state, string):
+                is_red = False
+                break
+        if is_red:
+            return True
+    return False
+def redundantAlpha33(s, examples):
+    # unroll
+    unrolled_state = copy.deepcopy(s)
+    unrolled_state.prior_unroll2()
+    tmp = unrolled_state.reprAlpha2()
+    unsp = list(i.replace('#','(0|1)*') for _, i in tmp)
+
+    #check part
+    for state in unsp:
+        is_red = True
+        for string in examples.getPos():
+            if membership(state, string):
+                is_red = False
+                break
+        if is_red:
+            return True
+    return False
+
+def redundantAlpha(s, examples):
+
+    # unroll
+    tmp1 = time.time()
+    unrolled_state = copy.deepcopy(s)
+    #print("1:"+str(time.time() - tmp1))
+
+
+    tmp2 = time.time()
+    unrolled_state.prior_unroll()
+    #print(str(time.time() - tmp2))
+
+
+
+    tmp3 = time.time()
+    tmp = unrolled_state.reprAlpha()
+    #print(str(time.time() - tmp3))
+
+
+    tmp6 = time.time()
+    unsp = list(i.replace('#','(0|1)*') for _, i in tmp)
+    #print(str(time.time() - tmp6))
+
+
+    tmp4 = time.time()
+    #check part
+    for state in unsp:
+        is_red = True
+        for string in examples.getPos():
+            if membership(state, string):
+                is_red = False
+                break
+        if is_red:
+            return True
+    #print(str(time.time() - tmp4))
+    #print("all: "+str(time.time() - tmp1))
+    return False
+
+
+
+
+
+def redundantNoQ(s, examples):
+    # unroll
+    unrolled_state = copy.deepcopy(s)
+    unrolled_state.noq_unroll()
+    #print("new " + str(unrolled_state))
+    tmp = list(lis[1] for lis in unrolled_state.reprAlpha())
+    #print(tmp)
     unsp = []
     for item in tmp:
         item_mod = item.replace('#','(0+1)*').replace('**','*').replace('*?','*').replace('+','|')
@@ -456,3 +539,74 @@ def is_new_redundant4(s, examples):
         if count == 0:
             return True
     return False
+
+def redundantAlpha2(s, examples):
+    # unroll
+    unrolled_state = copy.deepcopy(s)
+    unrolled_state.prior_unroll()
+    unrolled_state.spreadAll()
+    #print(unrolled_state)
+
+
+    tmp = unrolled_state.reprAlpha()
+
+    #check part
+    for _, state in tmp:
+        count = 0
+        for string in examples.getPos():
+            if membership(state, string):
+                count = count + 1
+        if count == 0:
+            return True
+    return False
+
+
+
+def redundantAlphayesq(s, examples):
+    # unroll
+    unrolled_state = copy.deepcopy(s)
+    unrolled_state.prioryesq_unroll()
+    #print(unrolled_state)
+    tmp = list(lis[1] for lis in unrolled_state.reprNew())
+    #print(tmp)
+    unsp = []
+    for _, item in tmp:
+        item_mod = item.replace('#','(0+1)*').replace('**','*').replace('*?','*').replace('+','|')
+        unsp.append(item_mod)
+
+
+    #check part
+    for state in unsp:
+        count = 0
+        for string in examples.getPos():
+            if membership(state, string):
+                count = count + 1
+        if count == 0:
+            return True
+    return False
+
+def redundantNew(s, examples):
+    # unroll
+    unrolled_state = copy.deepcopy(s)
+    unrolled_state.new_unroll()
+    #print("new " + str(unrolled_state))
+    tmp = list(lis[1] for lis in unrolled_state.reprNew())
+    #print(tmp)
+    unsp = []
+    for item in tmp:
+        item_mod = item.replace('#','(0+1)*').replace('**','*').replace('*?','*').replace('+','|')
+        unsp.append(item_mod)
+
+
+    #check part
+    for state in unsp:
+        count = 0
+        for string in examples.getPos():
+            if membership(state, string):
+                count = count + 1
+        if count == 0:
+            return True
+    return False
+
+
+
