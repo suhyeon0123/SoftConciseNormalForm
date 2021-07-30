@@ -1,22 +1,20 @@
 from queue import PriorityQueue
 from util import *
-import time
 import copy
 
 
-def synthesis(examples):
+def synthesis(examples, count_limit=50000):
     w = PriorityQueue()
     scanned = set()
     w.put((REGEX().getCost(), REGEX()))
 
     i = 0
     traversed = 1
-    start = time.time()
 
     answer = None
     finished = False
 
-    while not w.empty() and not finished:
+    while not w.empty() and not finished and i < count_limit:
         tmp = w.get()
         s = tmp[1]
         cost = tmp[0]
@@ -28,31 +26,20 @@ def synthesis(examples):
             for j, new_elem in enumerate([Character('0'), Character('1'), Or(), Or(Character('0'), Character('1')),
                                           Concatenate(Hole(), Hole()), KleenStar(), Question()]):
 
-                # print(repr(s), repr(new_elem))
-
                 k = copy.deepcopy(s)
 
                 if not k.spread(new_elem):
-                    # print("false "+ new_elem)
                     continue
 
                 traversed += 1
                 if repr(k) in scanned:
-                    # print("Already scanned?", repr(k))
-                    # print(list(scanned))
                     continue
                 else:
                     scanned.add(repr(k))
 
                 if not k.hasHole():
                     if is_solution(repr(k), examples, membership):
-                        end = time.time()
-                        print("Spent computation time:", end - start)
-                        print("Iteration:", i, "\tCost:", cost, "\tScanned REs:", len(scanned), "\tQueue Size:",
-                              w.qsize(), "\tTraversed:", traversed)
-                        # print("Result RE:", repr(k), "Verified by FAdo:", is_solution(repr(k), examples, membership2))
                         answer = repr(k)
-                        print("Result RE:", answer)
                         finished = True
                         break
 
@@ -62,32 +49,18 @@ def synthesis(examples):
                     checker = False
 
                 if checker and is_pdead(k, examples):
-                    # print(repr(k), "is pdead")
                     continue
 
                 if (new_elem.type == Type.K or new_elem.type == Type.Q or checker) and is_ndead(k, examples):
-                    # print(repr(k), "is ndead")
                     continue
 
                 if is_not_scnf(k, new_elem):
-                    # print(repr(k), "is not scnf")
                     continue
 
                 if is_redundant(k, examples, new_elem):
-                    # print(repr(k), "is redundant")
                     continue
 
                 w.put((k.getCost(), k))
-
-        if i % 1000 == 0:
-            print("Iteration:", i, "\tCost:", cost, "\tScanned REs:", len(scanned), "\tQueue Size:", w.qsize(),
-                  "\tTraversed:", traversed)
-            end = time.time()
-            print("Spent computation time:", end - start)
         i = i + 1
-
-
-    print("--end--")
-    print("count = " + str(i))
 
     return answer

@@ -3,7 +3,7 @@ import os
 
 
 class Examples(object):
-    def __init__(self, data_type, no=0, pos=None, neg=None):
+    def __init__(self, data_type='None', no=0, pos=None, neg=None):
         if data_type == 'AlphaRegex':
             self.pos_simple, self.neg_simple, self.answer = self.readFromFile(no)
             self.pos = list()
