@@ -1,5 +1,0 @@
-pyre2
-
-torch~=1.6.0
-xeger~=0.3.5
-numpy~=1.19.2

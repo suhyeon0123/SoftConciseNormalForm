@@ -1,15 +1,24 @@
 import fnmatch
-import glob
 import os
 
 
 class Examples(object):
-    def __init__(self, no):
-        self.pos_simple, self.neg_simple, self.answer = self.readFromFile(no)
-        self.pos = list()
-        self.neg = list()
-        self.make_examples(self.pos_simple, True)
-        self.make_examples(self.neg_simple, False)
+    def __init__(self, data_type, no=0, pos=None, neg=None):
+        if data_type == 'AlphaRegex':
+            self.pos_simple, self.neg_simple, self.answer = self.readFromFile(no)
+            self.pos = list()
+            self.neg = list()
+            self.make_examples(self.pos_simple, True)
+            self.make_examples(self.neg_simple, False)
+        elif data_type == 'Random':
+            self.pos_simple, self.neg_simple, self.answer = self.readFromFile2(no)
+            self.pos = list()
+            self.neg = list()
+            self.make_examples(self.pos_simple, True)
+            self.make_examples(self.neg_simple, False)
+        else:
+            self.pos = pos
+            self.neg = neg
 
 
     def setPos(self, pos):
@@ -35,9 +44,9 @@ class Examples(object):
 
     def readFromFile(self, no):
         target_name = "no" + str(no) + "_*"
-        for file_name in os.listdir("benchmarks_changed"):
+        for file_name in os.listdir("benchmarks/AlphaRegex"):
             if fnmatch.fnmatch(file_name, target_name):
-                f = open("./benchmarks_changed/" + file_name, 'r')
+                f = open("./benchmarks/AlphaRegex/" + file_name, 'r')
 
         lines = f.readlines()
         description = ''
@@ -63,9 +72,9 @@ class Examples(object):
 
     def readFromFile2(self, no):
         target_name = "no" + str(no)+".txt"
-        for file_name in os.listdir("./rand3_benchmarks"):
+        for file_name in os.listdir("./rand_various_benchmarks"):
             if fnmatch.fnmatch(file_name, target_name):
-                f = open("./rand3_benchmarks/" + file_name, 'r')
+                f = open("./rand_various_benchmarks/" + file_name, 'r')
 
         lines = f.readlines()
         description = ''
