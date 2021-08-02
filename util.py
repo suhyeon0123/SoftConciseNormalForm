@@ -1,3 +1,5 @@
+import copy
+
 from FAdo.fa import *
 from FAdo.cfg import *
 from parsetree import*
