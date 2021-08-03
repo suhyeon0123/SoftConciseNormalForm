@@ -1,9 +1,10 @@
 from queue import PriorityQueue
 from util import *
+
 import copy
 
 
-def synthesis(examples, count_limit=50000):
+def synthesis(examples, count_limit=50000, start_with_no_concat=False):
     w = PriorityQueue()
     scanned = set()
     w.put((REGEX().getCost(), REGEX()))
@@ -21,10 +22,14 @@ def synthesis(examples, count_limit=50000):
 
         hasHole = s.hasHole()
 
-        print("state : ", s, " cost: ", cost)
+        if start_with_no_concat and i == 0:
+            start_elems = [Character('0'), Character('1'), Character('2'), Character('3'), Character('4'),  Or(), Or(Character('0'), Or(Character('1'), Or(Character('2'), Or(Character('3'), Character('4'))))), KleenStar(), Question()]
+        else:
+            start_elems = [Character('0'), Character('1'), Character('2'), Character('3'), Character('4'),  Or(), Or(Character('0'), Or(Character('1'), Or(Character('2'), Or(Character('3'), Character('4'))))), Concatenate(Hole(), Hole()), KleenStar(), Question()]
+
+        #print("state : ", s, " cost: ", cost)
         if hasHole:
-            for j, new_elem in enumerate([Character('0'), Character('1'), Or(), Or(Character('0'), Character('1')),
-                                          Concatenate(Hole(), Hole()), KleenStar(), Question()]):
+            for j, new_elem in enumerate(start_elems):
 
                 k = copy.deepcopy(s)
 
@@ -43,7 +48,7 @@ def synthesis(examples, count_limit=50000):
                         finished = True
                         break
 
-                if repr(new_elem) == '0|1' or new_elem.type == Type.CHAR:
+                if repr(new_elem) == '0|1|2|3|4' or new_elem.type == Type.CHAR:
                     checker = True
                 else:
                     checker = False
@@ -64,3 +69,6 @@ def synthesis(examples, count_limit=50000):
         i = i + 1
 
     return answer
+
+
+

@@ -1,9 +1,8 @@
-import copy
-
 from FAdo.fa import *
 from FAdo.cfg import *
 from parsetree import*
 
+import copy
 
 def membership(regex, string):
     return bool(re.fullmatch(regex, string))
