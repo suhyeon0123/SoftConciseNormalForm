@@ -18,7 +18,7 @@ def is_inclusive(superset, subset):
     if repr(superset) == repr(subset) and not superset.hasHole():
         return True
     # R -> (0+1)*   sup-nohole sub-hole
-    if repr(superset) == '(0|1)*':
+    if repr(superset) == '(0|1|2|3|4)*':
         return True
     # made of 0s -> 0*, made of 1s -> 1* - nohole
     if repr(superset) == '0*' and '1' not in repr(subset) and not subset.hasHole():
@@ -105,7 +105,7 @@ class RE:
                 if self.lastRE == Type.Q and case.type == Type.K:
                     return False
 
-            if repr(case) == '0|1':
+            if repr(case) == '0|1|2|3|4':
                 self.lastRE = Type.CHAR
             else:
                 self.lastRE = case.type
@@ -485,9 +485,8 @@ class RE:
 
     def sigmastar(self):
         if self.type == Type.K:
-            if repr(self.r) != '0|1':
-                return bool(re.fullmatch(repr(self.r), '0')) and bool(re.fullmatch(repr(self.r), '1'))
-
+            if repr(self.r) != '0|1|2|3|4':
+                return bool(re.fullmatch(repr(self.r), '0')) and bool(re.fullmatch(repr(self.r), '1')) and bool(re.fullmatch(repr(self.r), '2')) and bool(re.fullmatch(repr(self.r), '3')) and bool(re.fullmatch(repr(self.r), '4'))
             return self.r.sigmastar()
         elif self.type == Type.Q:
             return self.r.sigmastar()
@@ -694,7 +693,7 @@ class KleenStar(RE):
 
     def spreadAll(self):
         if self.r.type == Type.HOLE:
-            return '({})*'.format(KleenStar(Or(Character('0'), Character('1'))))
+            return '({})*'.format(KleenStar(Or(Character('0'), Or(Character('1'), Or(Character('2'), Or(Character('3'), Character('4')))))))
         if self.r.level > self.level:
                 return '({})*'.format(self.r.spreadAll())
         else:
@@ -769,7 +768,7 @@ class Question(RE):
     def spreadAll(self):
 
         if self.r.type == Type.HOLE:
-            return '({})?'.format(KleenStar(Or(Character('0'), Character('1'))))
+            return '({})?'.format(KleenStar(Or(Character('0'), Or(Character('1'), Or(Character('2'), Or(Character('3'), Character('4')))))))
         elif self.r.level > self.level:
             return '({})?'.format(self.r.spreadAll())
         else:
@@ -854,7 +853,7 @@ class Concatenate(RE):
         str_list = []
         for regex in self.list:
             if regex.type == Type.HOLE:
-                str_list.append(formatSide(KleenStar(Or(Character('0'), Character('1')))))
+                str_list.append(formatSide(KleenStar(Or(Character('0'), Or(Character('1'), Or(Character('2'), Or(Character('3'), Character('4'))))))))
             else:
                 str_list.append(formatSide(regex))
         return ''.join(str_list)
@@ -970,7 +969,7 @@ class Or(RE):
             if str_list:
                 str_list.append("|")
             if regex.type == Type.HOLE:
-                str_list.append(formatSide(KleenStar(Or(Character('0'), Character('1')))))
+                str_list.append(formatSide(KleenStar(Or(Character('0'), Or(Character('1'), Or(Character('2'), Or(Character('3'), Character('4'))))))))
             else:
                 str_list.append(formatSide(regex))
 
@@ -996,7 +995,7 @@ class Or(RE):
         if not str_list:
             return '@emptyset'
         else:
-           return ''.join(str_list)
+            return ''.join(str_list)
 
 
     def reprAlpha2(self):
@@ -1004,7 +1003,7 @@ class Or(RE):
 
         for regex in self.list:
             for level_str in regex.reprAlpha2():
-                if level_str[1] == '(0|1)*':
+                if level_str[1] == '(0|1|2|3|4)*':
                     continue
                 elif level_str[0] > self.level:
                     result.append([level_str[0], '({})'.format(level_str[1])])
@@ -1012,7 +1011,7 @@ class Or(RE):
                     result.append([level_str[0], '{}'.format(level_str[1])])
 
         if not result:
-            return [[1, '(0+1)*']]
+            return [[1, '(0+1+2+3+4)*']]
         return result
 
     def hasHole(self):
