@@ -1134,22 +1134,23 @@ class Or(RE):
     def getCost(self):
         return UNION_COST + sum(list(i.getCost() for i in self.list))
 
-    def get_rand_re(depth):
-        case = random.randrange(0, depth)
-        if case > 3:
-            return rand_char()
+
+def get_rand_re(depth):
+    case = random.randrange(0, depth)
+    if case > 3:
+        return rand_char()
+    else:
+        case = random.randrange(0, 5)
+        if case <= 0:
+            return Or()
+        elif case <= 1:
+            return Concatenate(Hole(), Hole())
+        elif case <= 2:
+            return KleenStar()
+        elif case <= 3 and depth != 1:
+            return Question()
         else:
-            case = random.randrange(0, 5)
-            if case <= 0:
-                return Or()
-            elif case <= 1:
-                return Concatenate(Hole(), Hole())
-            elif case <= 2:
-                return KleenStar()
-            elif case <= 3 and depth != 1:
-                return Question()
-            else:
-                return Hole()
+            return Hole()
 
 
 def rand_char(alpha_size=5):
