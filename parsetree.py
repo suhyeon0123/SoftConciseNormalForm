@@ -1,7 +1,9 @@
-#Regular Expression Implementation ,Written by Adrian Stoll
+# Regular Expression Implementation ,Written by Adrian Stoll
 import re2 as re
 from config import *
 from enum import Enum
+import random
+
 
 class Type(Enum):
     HOLE = 0
@@ -12,6 +14,7 @@ class Type(Enum):
     U = 5
     EPS = 6
     REGEX = 10
+
 
 def is_inclusive(superset, subset):
     # R -> R    sup-nohole sub-nohole
@@ -37,19 +40,60 @@ def is_inclusive(superset, subset):
             if is_inclusive(KleenStar(regex), subset):
                 return True
 
+
 class RE:
     def __lt__(self, other):
         return False
 
     def rpn(self):
         if self.type == Type.K or self.type == Type.Q:
-            return self.r.rpn()+1
+            return self.r.rpn() + 1
         elif self.type == Type.C or self.type == Type.U:
-            return sum(list(i.rpn() for i in self.list)) + len(self.list) -1
+            return sum(list(i.rpn() for i in self.list)) + len(self.list) - 1
         elif self.type == Type.REGEX:
             return self.r.rpn()
         else:
             return 1
+
+    def make_child(self, count):
+        if self.type == Type.K or self.type == Type.Q:
+            if self.r.type == Type.HOLE:
+                while True:
+                    x = get_rand_re(count)
+                    if x.type != Type.K and x.type != Type.Q:
+                        self.r = x
+                        break
+            else:
+                self.r.make_child(count + 1)
+        elif self.type == Type.C or self.type == Type.U:
+            for index, regex in enumerate(self.list):
+                if regex.type == Type.HOLE:
+                    self.list[index] = get_rand_re(count)
+                else:
+                    self.list[index].make_child(count + 1)
+        elif self.type == Type.REGEX:
+            if self.r.type == Type.HOLE:
+                self.r = get_rand_re(count)
+            else:
+                self.r.make_child(count + 1)
+
+    def spreadRand(self):
+        if self.type == Type.K or self.type == Type.Q:
+            if self.r.type == Type.HOLE:
+                self.r = rand_char()
+            else:
+                self.r.spreadRand()
+        elif self.type == Type.C or self.type == Type.U:
+            for index, regex in enumerate(self.list):
+                if regex.type == Type.HOLE:
+                    self.list[index] = rand_char()
+                else:
+                    self.list[index].spreadRand()
+        elif self.type == Type.REGEX:
+            if self.r.type == Type.HOLE:
+                self.r = rand_char()
+            else:
+                self.r.spreadRand()
 
     def spread(self, case):
         self.string = None
@@ -118,8 +162,6 @@ class RE:
         else:
             return False
 
-
-
     def prior_unroll(self):
         self.string = None
 
@@ -141,14 +183,14 @@ class RE:
                 s2 = self.r.r
                 s3 = self.r
 
-                self.r= Concatenate(s1, s2, s3)
+                self.r = Concatenate(s1, s2, s3)
             elif self.r.type == Type.Q:
                 self.r = self.r.r
                 self.r.prior_unroll()
             else:
                 self.r.prior_unroll()
 
-
+    # Pruning Rules
     def starnormalform(self):
         if self.type == Type.K or self.type == Type.Q:
             if self.r.hasEps():
@@ -192,21 +234,25 @@ class RE:
 
                 if regex.type == Type.K:
                     # x*x
-                    if index+1 < len(self.list) and (regex.r.type == Type.CHAR or regex.r.type == Type.U) and repr(regex.r) == repr(self.list[index+1]):
+                    if index + 1 < len(self.list) and (regex.r.type == Type.CHAR or regex.r.type == Type.U) and repr(
+                            regex.r) == repr(self.list[index + 1]):
                         return True
-                    elif regex.r.type == Type.C and index+len(regex.r.list) < len(self.list) and not self.list[index+len(regex.r.list)].hasHole():
+                    elif regex.r.type == Type.C and index + len(regex.r.list) < len(self.list) and not self.list[
+                        index + len(regex.r.list)].hasHole():
                         tmp = Concatenate()
-                        tmp.list = self.list[index+1:index+len(regex.r.list)+1]
+                        tmp.list = self.list[index + 1:index + len(regex.r.list) + 1]
                         if repr(regex.r) == repr(tmp):
                             return True
 
                     # x*x?
-                    elif index+1 < len(self.list) and self.list[index+1].type == Type.Q and repr(regex.r) == repr(self.list[index+1].r):
+                    elif index + 1 < len(self.list) and self.list[index + 1].type == Type.Q and repr(regex.r) == repr(
+                            self.list[index + 1].r):
                         return True
 
                 elif regex.type == Type.Q:
                     # x?x
-                    if index + 1 < len(self.list) and (regex.r.type == Type.CHAR or regex.r.type == Type.U) and repr(regex.r) == repr(self.list[index + 1]):
+                    if index + 1 < len(self.list) and (regex.r.type == Type.CHAR or regex.r.type == Type.U) and repr(
+                            regex.r) == repr(self.list[index + 1]):
                         return True
                     elif regex.r.type == Type.C and index + len(regex.r.list) < len(self.list) and not self.list[
                         index + len(regex.r.list)].hasHole():
@@ -215,7 +261,8 @@ class RE:
                         if repr(regex.r) == repr(tmp):
                             return True
                     # x?x*
-                    elif index+1 < len(self.list) and self.list[index+1].type == Type.K and repr(regex.r) == repr(self.list[index+1].r):
+                    elif index + 1 < len(self.list) and self.list[index + 1].type == Type.K and repr(regex.r) == repr(
+                            self.list[index + 1].r):
                         return True
 
             return any(list(i.redundant_concat1() for i in self.list))
@@ -238,7 +285,7 @@ class RE:
                     for index2, regex2 in enumerate(self.list):
 
                         tmp = Concatenate()
-                        if index - index2 == 1 or index2 - index  == 1:
+                        if index - index2 == 1 or index2 - index == 1:
                             if regex2.hasEps() and is_inclusive(regex, regex2):
                                 return True
                         elif index > index2:
@@ -277,15 +324,16 @@ class RE:
                             tmp1 = Concatenate()
                             tmp1.list = self.r.list[0:index]
 
-                        if index == len(self.r.list)-1:
+                        if index == len(self.r.list) - 1:
                             right = True
-                        elif index == len(self.r.list)-2:
-                            tmp2 = self.r.list[len(self.r.list)-1]
+                        elif index == len(self.r.list) - 2:
+                            tmp2 = self.r.list[len(self.r.list) - 1]
                         else:
                             tmp2 = Concatenate()
-                            tmp2.list = self.r.list[index+1:len(self.r.list)]
+                            tmp2.list = self.r.list[index + 1:len(self.r.list)]
 
-                        if not regex.r.hasEps() and (left or is_inclusive(regex,tmp1)) and (right or is_inclusive(regex,tmp2)):
+                        if not regex.r.hasEps() and (left or is_inclusive(regex, tmp1)) and (
+                                right or is_inclusive(regex, tmp2)):
                             return True
 
             return self.r.KCK()
@@ -333,18 +381,17 @@ class RE:
                             tmp2.list = self.r.list[index + 1:len(self.r.list)]
                             righteps = all(list(i.hasEps() for i in tmp2.list))
 
-
-                        if lefteps and righteps and (left or is_inclusive(KleenStar(regex), tmp1)) and (right or is_inclusive(KleenStar(regex), tmp2)):
+                        if lefteps and righteps and (left or is_inclusive(KleenStar(regex), tmp1)) and (
+                                right or is_inclusive(KleenStar(regex), tmp2)):
                             return True
 
                 # single regex
-                for i in range(len(self.r.list)-2):
-                    for j in range(i+2, len(self.r.list)):
+                for i in range(len(self.r.list) - 2):
+                    for j in range(i + 2, len(self.r.list)):
                         if (i == 0 and j == len(self.r.list)) or j > len(self.r.list):
                             continue
                         regex = Concatenate()
                         regex.list = self.r.list[i:j]
-
 
                         if not regex.hasHole():
                             left = False
@@ -394,13 +441,14 @@ class RE:
 
         elif self.type == Type.Q:
             # (xx?)? (xx*)?
-            if self.r.type == Type.C and (self.r.list[len(self.r.list)-1].type == Type.K or self.r.list[len(self.r.list)-1].type == Type.Q):
+            if self.r.type == Type.C and (self.r.list[len(self.r.list) - 1].type == Type.K or self.r.list[
+                len(self.r.list) - 1].type == Type.Q):
                 if len(self.r.list) == 2:
                     tmp = self.r.list[0]
                 else:
                     tmp = Concatenate()
-                    tmp.list = self.r.list[0:len(self.r.list)-1]
-                if repr(tmp) == repr(self.r.list[len(self.r.list)-1].r):
+                    tmp.list = self.r.list[0:len(self.r.list) - 1]
+                if repr(tmp) == repr(self.r.list[len(self.r.list) - 1].r):
                     return True
 
             return self.r.QC()
@@ -427,7 +475,6 @@ class RE:
         else:
             return False
 
-
     def orinclusive(self):
         if self.type == Type.K or self.type == Type.Q:
             return self.r.orinclusive()
@@ -437,7 +484,7 @@ class RE:
         elif self.type == Type.U:
             for index, regex in enumerate(self.list):
                 for index2, regex2 in enumerate(self.list):
-                    if index < index2 and (is_inclusive(regex,regex2) or is_inclusive(regex2,regex)):
+                    if index < index2 and (is_inclusive(regex, regex2) or is_inclusive(regex2, regex)):
                         return True
 
             for index, regex in enumerate(self.list):
@@ -486,7 +533,9 @@ class RE:
     def sigmastar(self):
         if self.type == Type.K:
             if repr(self.r) != '0|1|2|3|4':
-                return bool(re.fullmatch(repr(self.r), '0')) and bool(re.fullmatch(repr(self.r), '1')) and bool(re.fullmatch(repr(self.r), '2')) and bool(re.fullmatch(repr(self.r), '3')) and bool(re.fullmatch(repr(self.r), '4'))
+                return bool(re.fullmatch(repr(self.r), '0')) and bool(re.fullmatch(repr(self.r), '1')) and bool(
+                    re.fullmatch(repr(self.r), '2')) and bool(re.fullmatch(repr(self.r), '3')) and bool(
+                    re.fullmatch(repr(self.r), '4'))
             return self.r.sigmastar()
         elif self.type == Type.Q:
             return self.r.sigmastar()
@@ -518,7 +567,6 @@ class RE:
                 if self.r.list[0].type == Type.K and self.r.list[0].r == self.r.list[1]:
                     return True
 
-
             return self.r.alpha()
 
 
@@ -526,15 +574,18 @@ class RE:
             for index, regex in enumerate(self.list):
 
                 if regex.type == Type.K:
-                    #x*x?
-                    if index+1 < len(self.list) and self.list[index+1].type == Type.Q and repr(regex.r) == repr(self.list[index+1].r):
+                    # x*x?
+                    if index + 1 < len(self.list) and self.list[index + 1].type == Type.Q and repr(regex.r) == repr(
+                            self.list[index + 1].r):
                         return True
-                    #x*x*
-                    if index+1 < len(self.list) and self.list[index+1].type == Type.K and repr(regex.r) == repr(self.list[index+1].r):
+                    # x*x*
+                    if index + 1 < len(self.list) and self.list[index + 1].type == Type.K and repr(regex.r) == repr(
+                            self.list[index + 1].r):
                         return True
                 elif regex.type == Type.Q:
-                    #x?x*
-                    if index+1 < len(self.list) and self.list[index+1].type == Type.K and repr(regex.r) == repr(self.list[index+1].r):
+                    # x?x*
+                    if index + 1 < len(self.list) and self.list[index + 1].type == Type.K and repr(regex.r) == repr(
+                            self.list[index + 1].r):
                         return True
 
             return any(list(i.alpha() for i in self.list))
@@ -558,51 +609,73 @@ class RE:
             return False
 
 
-
 class Hole(RE):
     def __init__(self):
         self.level = 0
         self.type = Type.HOLE
+
     def __repr__(self):
         return '#'
+
     def repr4(self):
         return [[self.level, '#']]
+
     def repr_unsp(self):
         return [[self.level, '#']]
+
     def reprunroll(self):
         return [[self.level, '#']]
+
     def reprsplit(self):
         return [[self.level, '#']]
+
     def reprAlpha(self):
         return [[self.level, '#']]
+
     def reprAlpha2(self):
         return [[self.level, '#']]
+
     def reprNew(self):
         return [[self.level, '#']]
 
     def hasHole(self):
         return True
+
     def unrolled(self):
         return False
+
     def getCost(self):
         return HOLE_COST
 
+
 class REGEX(RE):
-    def __init__(self, r = Hole()):
+    def __init__(self, r=Hole()):
         self.r = r
         self.type = Type.REGEX
         self.lastRE = Type.REGEX
         self.unrolled2 = False
+
     def __repr__(self):
         return repr(self.r)
+
+    def repr_labeled(self):
+        if self.r.type == Type.C:
+            return '{}'.format(self.r.repr_labeled())
+        else:
+            return '({})'.format(repr(self.r))
+
     def spreadAll(self):
         return self.r.spreadAll()
+
     def spreadNP(self):
         return self.r.spreadNP()
+
     def repr4(self):
         return self.r.repr4()
+
     def repr_unsp(self):
         return self.r.repr_unsp()
+
     def reprAlpha(self):
         return self.r.reprAlpha()
 
@@ -614,53 +687,74 @@ class REGEX(RE):
 
     def hasHole(self):
         return self.r.hasHole()
+
     def unrolled(self):
         return self.r.unrolled()
+
     def getCost(self):
         return self.r.getCost()
+
 
 class Epsilon(RE):
     def __init__(self):
         self.level = 0
         self.type = Type.EPS
+
     def __repr__(self):
         return '@epsilon'
+
     def hasHole(self):
         return False
+
     def unrolled(self):
         return False
+
 
 class Character(RE):
     def __init__(self, c):
         self.c = c
         self.level = 0
         self.type = Type.CHAR
+
     def __repr__(self):
         return self.c
+
     def spreadAll(self):
         return self.c
+
     def spreadNP(self):
         return self.c
+
     def repr4(self):
         return [[self.level, repr(self)]]
+
     def repr_unsp(self):
         return [[self.level, repr(self)]]
+
     def reprunroll(self):
         return [[self.level, repr(self)]]
+
     def reprsplit(self):
         return [[self.level, repr(self)]]
+
     def reprAlpha(self):
         return [[self.level, repr(self)]]
+
     def reprAlpha2(self):
         return [[self.level, repr(self)]]
+
     def reprNew(self):
         return [[self.level, repr(self)]]
+
     def hasHole(self):
         return False
+
     def unrolled(self):
         return False
+
     def getCost(self):
         return SYMBOL_COST
+
 
 class KleenStar(RE):
     def __init__(self, r=Hole()):
@@ -683,7 +777,6 @@ class KleenStar(RE):
             self.string = '@epsilon'
             return self.string
 
-
         if self.r.level > self.level:
             self.string = '({})*'.format(self.r)
             return self.string
@@ -693,11 +786,12 @@ class KleenStar(RE):
 
     def spreadAll(self):
         if self.r.type == Type.HOLE:
-            return '({})*'.format(KleenStar(Or(Character('0'), Or(Character('1'), Or(Character('2'), Or(Character('3'), Character('4')))))))
+            return '({})*'.format(KleenStar(
+                Or(Character('0'), Or(Character('1'), Or(Character('2'), Or(Character('3'), Character('4')))))))
         if self.r.level > self.level:
-                return '({})*'.format(self.r.spreadAll())
+            return '({})*'.format(self.r.spreadAll())
         else:
-                return '{}*'.format(self.r.spreadAll())
+            return '{}*'.format(self.r.spreadAll())
 
     def spreadNP(self):
         if self.r.type == Type.HOLE:
@@ -714,10 +808,8 @@ class KleenStar(RE):
         else:
             return '{}*'.format(self.r.spreadNP())
 
-
     def reprAlpha2(self):
         return [[1, repr(self)]]
-
 
     def hasHole(self):
         if not self.hasHole2:
@@ -768,7 +860,8 @@ class Question(RE):
     def spreadAll(self):
 
         if self.r.type == Type.HOLE:
-            return '({})?'.format(KleenStar(Or(Character('0'), Or(Character('1'), Or(Character('2'), Or(Character('3'), Character('4')))))))
+            return '({})?'.format(KleenStar(
+                Or(Character('0'), Or(Character('1'), Or(Character('2'), Or(Character('3'), Character('4')))))))
         elif self.r.level > self.level:
             return '({})?'.format(self.r.spreadAll())
         else:
@@ -784,7 +877,6 @@ class Question(RE):
         if '{}'.format(self.r.spreadNP()) == '@epsilon':
             return '@epsilon'
 
-
         if self.r.level > self.level:
             return '({})?'.format(self.r.spreadNP())
         else:
@@ -792,7 +884,6 @@ class Question(RE):
 
     def reprAlpha2(self):
         return [[1, repr(self)]]
-
 
     def hasHole(self):
         if not self.hasHole2:
@@ -809,7 +900,8 @@ class Question(RE):
             return False
 
     def getCost(self):
-        return  CLOSURE_COST + self.r.getCost()
+        return CLOSURE_COST + self.r.getCost()
+
 
 class Concatenate(RE):
     def __init__(self, *regexs):
@@ -831,6 +923,7 @@ class Concatenate(RE):
                 return '({})'.format(side)
             else:
                 return '{}'.format(side)
+
         for regex in self.list:
             if '@emptyset' in repr(regex):
                 self.string = '@emptyset'
@@ -840,6 +933,16 @@ class Concatenate(RE):
         for regex in self.list:
             if '@epsilon' != repr(regex):
                 str_list.append(formatSide(regex))
+        return ''.join(str_list)
+
+    def repr_labeled(self):
+
+        str_list = []
+        for regex in self.list:
+            if regex.type == Type.C:
+                str_list.append('{}'.format(regex.repr_labeled()))
+            else:
+                str_list.append('({})'.format(regex))
         return ''.join(str_list)
 
     def spreadAll(self):
@@ -853,7 +956,8 @@ class Concatenate(RE):
         str_list = []
         for regex in self.list:
             if regex.type == Type.HOLE:
-                str_list.append(formatSide(KleenStar(Or(Character('0'), Or(Character('1'), Or(Character('2'), Or(Character('3'), Character('4'))))))))
+                str_list.append(formatSide(KleenStar(
+                    Or(Character('0'), Or(Character('1'), Or(Character('2'), Or(Character('3'), Character('4'))))))))
             else:
                 str_list.append(formatSide(regex))
         return ''.join(str_list)
@@ -880,33 +984,30 @@ class Concatenate(RE):
         return ''.join(str_list)
 
     def reprAlpha2(self):
-            result = []
+        result = []
 
-            for index1, regex in enumerate(self.list):
-                sp = regex.reprAlpha2()
-                if len(sp) != 1:
-                    for level_str in sp:
-                        str_list = []
-                        for index2, regex2 in enumerate(self.list):
-                            if index1 == index2:
-                                if level_str[0] > self.level:
-                                    str_list.append('({})'.format(level_str[1]))
-                                else:
-                                    str_list.append('{}'.format(level_str[1]))
+        for index1, regex in enumerate(self.list):
+            sp = regex.reprAlpha2()
+            if len(sp) != 1:
+                for level_str in sp:
+                    str_list = []
+                    for index2, regex2 in enumerate(self.list):
+                        if index1 == index2:
+                            if level_str[0] > self.level:
+                                str_list.append('({})'.format(level_str[1]))
                             else:
-                                if regex2.type == Type.U:
-                                    str_list.append('({})'.format(repr(regex2)))
-                                else:
-                                    str_list.append(repr(regex2))
-                        result.append([self.level, ''.join(str_list)])
+                                str_list.append('{}'.format(level_str[1]))
+                        else:
+                            if regex2.type == Type.U:
+                                str_list.append('({})'.format(repr(regex2)))
+                            else:
+                                str_list.append(repr(regex2))
+                    result.append([self.level, ''.join(str_list)])
 
+        if not result:
+            return [[self.level, repr(self)]]
 
-            if not result:
-                return [[self.level, repr(self)]]
-
-            return result
-
-
+        return result
 
     def hasHole(self):
         if not self.hasHole2:
@@ -914,6 +1015,7 @@ class Concatenate(RE):
 
         self.hasHole2 = any(list(i.hasHole() for i in self.list))
         return self.hasHole2
+
     def unrolled(self):
         if self.unrolled2:
             return True
@@ -923,6 +1025,7 @@ class Concatenate(RE):
 
     def getCost(self):
         return CONCAT_COST + sum(list(i.getCost() for i in self.list))
+
 
 class Or(RE):
     def __init__(self, a=Hole(), b=Hole()):
@@ -969,7 +1072,8 @@ class Or(RE):
             if str_list:
                 str_list.append("|")
             if regex.type == Type.HOLE:
-                str_list.append(formatSide(KleenStar(Or(Character('0'), Or(Character('1'), Or(Character('2'), Or(Character('3'), Character('4'))))))))
+                str_list.append(formatSide(KleenStar(
+                    Or(Character('0'), Or(Character('1'), Or(Character('2'), Or(Character('3'), Character('4'))))))))
             else:
                 str_list.append(formatSide(regex))
 
@@ -996,7 +1100,6 @@ class Or(RE):
             return '@emptyset'
         else:
             return ''.join(str_list)
-
 
     def reprAlpha2(self):
         result = []
@@ -1030,3 +1133,25 @@ class Or(RE):
 
     def getCost(self):
         return UNION_COST + sum(list(i.getCost() for i in self.list))
+
+    def get_rand_re(depth):
+        case = random.randrange(0, depth)
+        if case > 3:
+            return rand_char()
+        else:
+            case = random.randrange(0, 5)
+            if case <= 0:
+                return Or()
+            elif case <= 1:
+                return Concatenate(Hole(), Hole())
+            elif case <= 2:
+                return KleenStar()
+            elif case <= 3 and depth != 1:
+                return Question()
+            else:
+                return Hole()
+
+
+def rand_char(alpha_size=5):
+    case = random.randrange(0, alpha_size)
+    return Character(str(case))
