@@ -37,14 +37,19 @@ def is_pdead(s, examples):
     return False
 
 
-def is_ndead(s, examples):
-    s_spreadNP = s.spreadNP()
+def is_ndead(s, examples, prefix=None, suffix=None):
+    regex = repr(s.spreadNP())
 
-    if s_spreadNP == '@emptyset':
+    if regex == '@emptyset':
         return False
 
+    if prefix:
+        regex = prefix + regex
+    if suffix:
+        regex = regex + suffix
+
     for string in examples.getNeg():
-        if membership(s_spreadNP, string):
+        if membership(regex, string):
             return True
 
     return False

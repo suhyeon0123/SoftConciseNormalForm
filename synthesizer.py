@@ -57,7 +57,7 @@ def synthesis(examples, count_limit=50000, start_with_no_concat=False, prefix_fo
                 if checker and is_pdead(k, examples):
                     continue
 
-                if (new_elem.type == Type.K or new_elem.type == Type.Q or checker) and is_ndead(k, examples):
+                if (new_elem.type == Type.K or new_elem.type == Type.Q or checker) and is_ndead(k, examples, prefix_for_neg_test, suffix_for_neg_test):
                     continue
 
                 if is_not_scnf(k, new_elem):
