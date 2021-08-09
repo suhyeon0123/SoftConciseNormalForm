@@ -1,6 +1,6 @@
 from FAdo.fa import *
 from FAdo.cfg import *
-from parsetree import*
+from parsetree import *
 
 import copy
 
@@ -8,13 +8,18 @@ def membership(regex, string):
     return bool(re.fullmatch(regex, string))
 
 
-def is_solution(regex, examples, membership):
+def is_solution(regex, examples, membership, prefix_for_neg_test=None, suffix_for_neg_test=None):
     if regex == '@emptyset':
         return False
 
     for string in examples.getPos():
         if not membership(regex, string):
             return False
+
+    if prefix_for_neg_test is not None:
+        regex = '(' + prefix_for_neg_test + ')' + regex
+    if suffix_for_neg_test is not None:
+        regex = regex + '(' + suffix_for_neg_test + ')'
 
     for string in examples.getNeg():
         if membership(regex, string):
