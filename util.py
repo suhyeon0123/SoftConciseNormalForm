@@ -28,8 +28,8 @@ def is_solution(regex, examples, membership, prefix_for_neg_test=None, suffix_fo
     return True
 
 
-def is_pdead(s, examples):
-    s_spreadAll = s.spreadAll()
+def is_pdead(s, examples, alphabet_size=5):
+    s_spreadAll = s.spreadAll(alphabet_size)
 
     for string in examples.getPos():
         if not membership(s_spreadAll, string):
@@ -55,8 +55,10 @@ def is_ndead(s, examples, prefix=None, suffix=None):
     return False
 
 
-def is_not_scnf(s, new_elem):
-    if repr(new_elem) == '0|1' or new_elem.type == Type.CHAR:
+def is_not_scnf(s, new_elem, alphabet_size=5):
+    all_char = [Character(str(x)) for x in range(alphabet_size)]
+
+    if repr(new_elem) == str(Or(*all_char)) or new_elem.type == Type.CHAR:
         checker = True
     else:
         checker = False
@@ -69,15 +71,15 @@ def is_not_scnf(s, new_elem):
         # print("concat1")
         return True
 
-    if s.redundant_concat2():
+    if s.redundant_concat2(alphabet_size):
         # print("concat2")
         return True
 
-    if checker and s.KCK():
+    if checker and s.KCK(alphabet_size):
         # print(repr(k), "is kc_qc")
         return True
 
-    if (new_elem.type == Type.K or new_elem.type == Type.Q or checker) and s.KCQ():
+    if (new_elem.type == Type.K or new_elem.type == Type.Q or checker) and s.KCQ(alphabet_size):
         # print(repr(k), "KCQ")
         return True
 
@@ -89,7 +91,7 @@ def is_not_scnf(s, new_elem):
         # print(repr(k), "is OQ")
         return True
 
-    if checker and s.orinclusive():
+    if checker and s.orinclusive(alphabet_size):
         # print(repr(k), "is orinclusive")
         return True
 
@@ -97,14 +99,15 @@ def is_not_scnf(s, new_elem):
         # print(repr(k), "is prefix")
         return True
 
-    if (new_elem.type == Type.K or new_elem.type == Type.Q or checker) and s.sigmastar():
+    if (new_elem.type == Type.K or new_elem.type == Type.Q or checker) and s.sigmastar(alphabet_size):
         # print(repr(k), "is equivalent_KO")
         return True
     return False
 
 
-def is_redundant(s, examples, new_elem):
-    if repr(new_elem) == '0|1' or new_elem.type == Type.CHAR:
+def is_redundant(s, examples, new_elem, alphabet_size):
+    all_char = [Character(str(x)) for x in range(alphabet_size)]
+    if repr(new_elem) == str(Or(*all_char)) or new_elem.type == Type.CHAR:
         checker = True
     else:
         checker = False
@@ -115,7 +118,7 @@ def is_redundant(s, examples, new_elem):
     unrolled_state = copy.deepcopy(s)
     unrolled_state.prior_unroll()
     tmp = unrolled_state.reprAlpha2()
-    unsp = list(i.replace('#', '(0|1)*') for _, i in tmp)
+    unsp = list(i.replace('#', '({})*'.format(Or(*all_char))) for _, i in tmp)
 
     # check part
     for state in unsp:

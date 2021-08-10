@@ -5,7 +5,8 @@ from examples import *
 import copy
 
 
-def synthesis(examples, count_limit=50000, start_with_no_concat=False, prefix_for_neg_test=None, suffix_for_neg_test=None):
+def synthesis(examples, count_limit=50000, start_with_no_concat=False, prefix_for_neg_test=None,
+              suffix_for_neg_test=None, alphabet_size=5):
     w = PriorityQueue()
     scanned = set()
     w.put((REGEX().getCost(), REGEX()))
@@ -23,12 +24,10 @@ def synthesis(examples, count_limit=50000, start_with_no_concat=False, prefix_fo
 
         hasHole = s.hasHole()
 
-        if start_with_no_concat and i == 0:
-            start_elems = [Character('0'), Character('1'), Character('2'), Character('3'), Character('4'),  Or(), Or(Character('0'), Or(Character('1'), Or(Character('2'), Or(Character('3'), Character('4'))))), KleenStar(), Question()]
-        else:
-            start_elems = [Character('0'), Character('1'), Character('2'), Character('3'), Character('4'),  Or(), Or(Character('0'), Or(Character('1'), Or(Character('2'), Or(Character('3'), Character('4'))))), Concatenate(Hole(), Hole()), KleenStar(), Question()]
+        all_char = [Character(str(x)) for x in range(alphabet_size)]
+        start_elems = get_start_elem(all_char, start_with_no_concat, is_first=(i == 0))
 
-        #print("state : ", s, " cost: ", cost)
+        # print("state : ", s, " cost: ", cost)
         if hasHole:
             for j, new_elem in enumerate(start_elems):
 
@@ -45,25 +44,27 @@ def synthesis(examples, count_limit=50000, start_with_no_concat=False, prefix_fo
 
                 if not k.hasHole():
                     if is_solution(repr(k), examples, membership, prefix_for_neg_test, suffix_for_neg_test):
-                        answer = repr(k)
+                        answer = k
                         finished = True
                         break
 
-                if repr(new_elem) == '0|1|2|3|4' or new_elem.type == Type.CHAR:
+                if repr(new_elem) == str(Or(*all_char)) or new_elem.type == Type.CHAR:
                     checker = True
                 else:
                     checker = False
 
-                if checker and is_pdead(k, examples):
+                if checker and is_pdead(k, examples, alphabet_size):
                     continue
 
-                if (new_elem.type == Type.K or new_elem.type == Type.Q or checker) and is_ndead(k, examples, prefix_for_neg_test, suffix_for_neg_test):
+                if (new_elem.type == Type.K or new_elem.type == Type.Q or checker) and is_ndead(k, examples,
+                                                                                                prefix_for_neg_test,
+                                                                                                suffix_for_neg_test):
                     continue
 
-                if is_not_scnf(k, new_elem):
+                if is_not_scnf(k, new_elem, alphabet_size):
                     continue
 
-                if is_redundant(k, examples, new_elem):
+                if is_redundant(k, examples, new_elem, alphabet_size):
                     continue
 
                 w.put((k.getCost(), k))
@@ -72,10 +73,26 @@ def synthesis(examples, count_limit=50000, start_with_no_concat=False, prefix_fo
     return answer
 
 
+def get_start_elem(all_char, start_with_no_concat, is_first):
+    start_elems = [] + all_char + [Or(), Or(*all_char)]
+    if not is_first or not start_with_no_concat:
+        start_elems.append(Concatenate(Hole(), Hole()))
+    start_elems += [KleenStar(), Question()]
+
+    return start_elems
+
+
 def main():
-    regex = synthesis(Examples(pos=set(['222222', '2222', '22', '222222222']), neg=set(['003120310', '214244', '02420021', '0204001', '021431', '1024', '1124', '222423442', '3212', '1133233'])), 2000, start_with_no_concat=False)
+    regex = synthesis(Examples(pos=set(['222222', '2222', '22', '222222222']), neg=set(
+        ['003120310', '214244', '02420021', '0204001', '021431', '1024', '1124', '222423442', '3212', '1133233'])),
+                      2000, start_with_no_concat=False)
+    print(regex)
+    regex = synthesis(Examples(pos=set(['222222', '2222', '22', '222222222']), neg=set(
+        ['003120310', '213233', '02320021', '0203001', '021331', '1023', '1123', '22232332', '3212', '1133233'])),
+                      2000, start_with_no_concat=False, alphabet_size=4)
 
     print(regex)
+
 
 if __name__ == "__main__":
     main()
