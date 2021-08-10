@@ -17,9 +17,9 @@ def is_solution(regex, examples, membership, prefix_for_neg_test=None, suffix_fo
             return False
 
     if prefix_for_neg_test is not None:
-        regex = '(' + prefix_for_neg_test + ')' + regex
+        regex = '(' + prefix_for_neg_test + ')' + '(' + regex + ')'
     if suffix_for_neg_test is not None:
-        regex = regex + '(' + suffix_for_neg_test + ')'
+        regex = '(' + regex + ')' + '(' + suffix_for_neg_test + ')'
 
     for string in examples.getNeg():
         if membership(regex, string):
