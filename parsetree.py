@@ -27,7 +27,8 @@ def is_inclusive(superset, subset, alphabet_size=5):
     # made of 0s -> 0*, made of 1s -> 1* - nohole
     for i in range(alphabet_size):
         if repr(superset) == str(i) + '*' and not subset.hasHole():
-            tmp = [x for x in range(alphabet_size)].remove(i)
+            tmp = [x for x in range(alphabet_size)]
+            tmp.remove(i)
             if all([str(x) not in repr(subset) for x in tmp]):
                 return True
 
@@ -982,6 +983,8 @@ class Or(RE):
         self.list = list()
         for regex in regexs:
             self.list.append(regex)
+        if len(self.list) == 0:
+            self.list = [Hole(), Hole()]
         self.level = 3
         self.string = None
         self.hasHole2 = True
@@ -1087,17 +1090,17 @@ class Or(RE):
 
 def get_rand_re(depth, alphabet_size=5):
     case = random.randrange(0, depth)
-    if case > 3:
+    if case > 2:
         return rand_char(alphabet_size)
     else:
-        case = random.randrange(0, 5)
+        case = random.randrange(0, 6)
         if case <= 0:
             return Or()
-        elif case <= 1:
-            return Concatenate(Hole(), Hole())
         elif case <= 2:
+            return Concatenate(Hole(), Hole())
+        elif case <= 3:
             return KleenStar()
-        elif case <= 3 and depth != 1:
+        elif case <= 4 and depth != 1:
             return Question()
         else:
             return Hole()
