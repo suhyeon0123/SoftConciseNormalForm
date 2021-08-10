@@ -620,7 +620,7 @@ class Hole(RE):
     def hasHole(self):
         return True
 
-    def reprAlpha2(self):
+    def reprAlpha2(self, alphabet_size=5):
         return [[self.level, '#']]
 
     def unrolled(self):
@@ -652,8 +652,8 @@ class REGEX(RE):
     def spreadNP(self):
         return self.r.spreadNP()
 
-    def reprAlpha2(self):
-        return self.r.reprAlpha2()
+    def reprAlpha2(self, alphabet_size=5):
+        return self.r.reprAlpha2(alphabet_size)
 
     def hasHole(self):
         return self.r.hasHole()
@@ -695,7 +695,7 @@ class Character(RE):
     def spreadNP(self):
         return self.c
 
-    def reprAlpha2(self):
+    def reprAlpha2(self, alphabet_size=5):
         return [[self.level, repr(self)]]
 
     def hasHole(self):
@@ -760,7 +760,7 @@ class KleenStar(RE):
         else:
             return '{}*'.format(self.r.spreadNP())
 
-    def reprAlpha2(self):
+    def reprAlpha2(self, alphabet_size=5):
         return [[1, repr(self)]]
 
     def hasHole(self):
@@ -833,7 +833,7 @@ class Question(RE):
         else:
             return '{}?'.format(self.r.spreadNP())
 
-    def reprAlpha2(self):
+    def reprAlpha2(self, alphabet_size=5):
         return [[1, repr(self)]]
 
     def hasHole(self):
@@ -934,11 +934,11 @@ class Concatenate(RE):
                     str_list.append(formatSide(regex))
         return ''.join(str_list)
 
-    def reprAlpha2(self):
+    def reprAlpha2(self, alphabet_size=5):
         result = []
 
         for index1, regex in enumerate(self.list):
-            sp = regex.reprAlpha2()
+            sp = regex.reprAlpha2(alphabet_size)
             if len(sp) != 1:
                 for level_str in sp:
                     str_list = []
@@ -1054,12 +1054,13 @@ class Or(RE):
         else:
             return ''.join(str_list)
 
-    def reprAlpha2(self):
+    def reprAlpha2(self, alphabet_size):
         result = []
+        all_char = [Character(str(x)) for x in range(alphabet_size)]
 
         for regex in self.list:
-            for level_str in regex.reprAlpha2():
-                if level_str[1] == '(0|1)*':
+            for level_str in regex.reprAlpha2(alphabet_size):
+                if level_str[1] == '({})*'.format(Or(*all_char)):
                     continue
                 elif level_str[0] > self.level:
                     result.append([level_str[0], '({})'.format(level_str[1])])
@@ -1067,7 +1068,7 @@ class Or(RE):
                     result.append([level_str[0], '{}'.format(level_str[1])])
 
         if not result:
-            return [[1, '(0+1)*']]
+            return [[1, '({})*'.format(Or(*all_char)).replace('|','+')]]
         return result
 
     def hasHole(self):

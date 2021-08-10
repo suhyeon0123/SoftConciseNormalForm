@@ -117,7 +117,7 @@ def is_redundant(s, examples, new_elem, alphabet_size):
     # unroll
     unrolled_state = copy.deepcopy(s)
     unrolled_state.prior_unroll()
-    tmp = unrolled_state.reprAlpha2()
+    tmp = unrolled_state.reprAlpha2(alphabet_size)
     unsp = list(i.replace('#', '({})*'.format(Or(*all_char))) for _, i in tmp)
 
     # check part
