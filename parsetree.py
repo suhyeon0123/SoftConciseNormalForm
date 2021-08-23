@@ -12,7 +12,8 @@ class Type(Enum):
     Q = 3
     C = 4
     U = 5
-    EPS = 6
+    N = 6
+    EPS = 7
     REGEX = 10
 
 
@@ -1088,6 +1089,95 @@ class Or(RE):
     def getCost(self):
         return UNION_COST + sum(list(i.getCost() for i in self.list))
 
+
+class Not(RE):
+    def __init__(self, *regexs):
+        self.list = list()
+        for regex in regexs:
+            self.list.append(regex)
+        if len(self.list) == 0:
+            self.list = [Hole()]
+        self.level = 4
+        self.string = None
+        self.hasHole2 = True
+        self.type = Type.N
+        self.unrolled2 = False
+
+    def __repr__(self):
+        if self.string:
+            return self.string
+
+        def formatSide(side):
+            if side.level > self.level:
+                return '({})'.format(side)
+            else:
+                return '{}'.format(side)
+
+        str_list = []
+        for regex in self.list:
+            if repr(regex) != '@emptyset':
+
+                str_list.append(formatSide(regex))
+        if not str_list:
+            return '@emptyset'
+        else:
+            return '[^' + ''.join(str_list) + ']'
+
+    def spreadAll(self, alphabet_size=5):
+
+        def formatSide(side):
+            if side.level > self.level:
+                return '({})'.format(side.spreadAll(alphabet_size))
+            else:
+                return '{}'.format(side.spreadAll(alphabet_size))
+
+        str_list = []
+        for regex in self.list:
+
+            if regex.type == Type.HOLE:
+                all_char = [Character(str(x)) for x in range(alphabet_size)]
+                str_list.append(formatSide(KleenStar(Or(*all_char))))
+            else:
+                str_list.append(formatSide(regex))
+
+        return '[^' + ''.join(str_list) + ']'
+
+    def spreadNP(self):
+
+        def formatSide(side):
+            if side.level > self.level:
+                return '({})'.format(side.spreadNP())
+            else:
+                return '{}'.format(side.spreadNP())
+
+        str_list = []
+        for regex in self.list:
+            if regex.type != Type.HOLE and regex.spreadNP() != '@emptyset':
+                if regex.type == Type.HOLE:
+                    str_list.append(formatSide(Character('@emptyset')))
+                else:
+                    str_list.append(formatSide(regex))
+        if not str_list:
+            return '@emptyset'
+        else:
+            return '[^' + ''.join(str_list) + ']'
+
+    def hasHole(self):
+        if not self.hasHole2:
+            return False
+
+        self.hasHole2 = any(list(i.hasHole() for i in self.list))
+        return self.hasHole2
+
+    def unrolled(self):
+        if self.unrolled2:
+            return True
+
+        self.unrolled2 = any(list(i.unrolled() for i in self.list))
+        return self.unrolled2
+
+    def getCost(self):
+        return sum(list(i.getCost() for i in self.list))
 
 def get_rand_re(depth, alphabet_size=5):
     case = random.randrange(0, depth)
