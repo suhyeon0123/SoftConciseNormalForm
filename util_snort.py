@@ -1,6 +1,6 @@
 from FAdo.fa import *
 from FAdo.cfg import *
-from parsetree import *
+from parsetree_snort import *
 
 import copy
 
@@ -30,7 +30,6 @@ def is_solution(regex, examples, membership, prefix_for_neg_test=None, suffix_fo
 
 def is_pdead(s, examples, alphabet_size=5):
     s_spreadAll = s.spreadAll(alphabet_size)
-
     for string in examples.getPos():
         if not membership(s_spreadAll, string):
             return True
@@ -42,12 +41,12 @@ def is_ndead(s, examples, prefix=None, suffix=None):
 
     if regex == '@emptyset':
         return False
-
     if prefix:
         regex = prefix + regex
     if suffix:
         regex = regex + suffix
-
+    # print(regex)
+    # print(repr(regex))
     for string in examples.getNeg():
         if membership(regex, string):
             return True
@@ -106,8 +105,7 @@ def is_not_scnf(s, new_elem, alphabet_size=5):
 
 
 def is_redundant(s, examples, new_elem, alphabet_size):
-    all_char = [Character(str(x)) for x in range(alphabet_size)]
-    if repr(new_elem) == str(Or(*all_char)) or new_elem.type == Type.CHAR:
+    if new_elem.type == Type.CHAR:
         checker = True
     else:
         checker = False
@@ -118,7 +116,7 @@ def is_redundant(s, examples, new_elem, alphabet_size):
     unrolled_state = copy.deepcopy(s)
     unrolled_state.prior_unroll()
     tmp = unrolled_state.reprAlpha2(alphabet_size)
-    unsp = list(i.replace('#', '({})*'.format(Or(*all_char))) for _, i in tmp)
+    unsp = list(i.replace('#', '({})*'.format(Character('.'))) for _, i in tmp)
 
     # check part
     for state in unsp:

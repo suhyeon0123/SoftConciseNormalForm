@@ -1,12 +1,12 @@
 from queue import PriorityQueue
-from util import *
+from util_snort import *
 from examples import *
 
 import copy
 
 
 def synthesis(examples, count_limit=50000, start_with_no_concat=False, prefix_for_neg_test=None,
-              suffix_for_neg_test=None, alphabet_size=5, type=None):
+              suffix_for_neg_test=None, alphabet_size=5, type=None, mapping_table=None):
     w = PriorityQueue()
     scanned = set()
     w.put((REGEX().getCost(), REGEX()))
@@ -26,18 +26,19 @@ def synthesis(examples, count_limit=50000, start_with_no_concat=False, prefix_fo
 
         all_char = [Character(str(x)) for x in range(alphabet_size)]
         if type == 'snort':
-            start_elems = get_start_elem_snort(examples, start_with_no_concat, is_first=(i == 0))
+            start_elems = get_start_elem_snort(examples, start_with_no_concat, is_first=(i == 0), mapping_table=mapping_table)
         else:
             start_elems = get_start_elem(all_char, start_with_no_concat, is_first=(i == 0))
+        #print(start_elems)
 
         # print("state : ", s, " cost: ", cost)
         if hasHole:
             for j, new_elem in enumerate(start_elems):
 
                 k = copy.deepcopy(s)
-                print(k)
                 if not k.spread(new_elem):
                     continue
+                print(k)
 
                 traversed += 1
                 if repr(k) in scanned:
@@ -63,11 +64,12 @@ def synthesis(examples, count_limit=50000, start_with_no_concat=False, prefix_fo
                                                                                                 prefix_for_neg_test,
                                                                                                 suffix_for_neg_test):
                     continue
-
-                if is_not_scnf(k, new_elem, alphabet_size):
-                    continue
-
+                #
+                # if is_not_scnf(k, new_elem, alphabet_size):
+                #     continue
+                #
                 if is_redundant(k, examples, new_elem, alphabet_size):
+                    #print(k)
                     continue
 
                 w.put((k.getCost(), k))
@@ -84,17 +86,34 @@ def get_start_elem(all_char, start_with_no_concat, is_first):
 
     return start_elems
 
-def get_start_elem_snort(example, start_with_no_concat, is_first):
-
+def get_start_elem_snort(example, start_with_no_concat, is_first, mapping_table):
     pos_lst = example.getPos()
-    symbols = set()
 
-    for pos in pos_lst:
-        for x in pos:
-            symbols.add(x)
+    # # make symbol list
+    # symbols = set()
+    # for pos in pos_lst:
+    #
+    #
+    #     pos = re.sub('\(`\w\w\)', '', pos)
+    #
+    #     for x in pos:
+    #         y = re.findall('(?!\x0b|\\\\|\\|\'|\(`\w\w\)).', x)
+    #         symbols.update(y)
+    #
+    # symbols = list(symbols)
+    # for idx, symbol in enumerate(symbols):
+    #     symbols[idx] = re.sub('(\*|\+|\(|\)|\^|\?|\||\'|\")', r'(\\\1)', symbol)
+    #     #if symbol == '*' or symbol == '+' or symbol == '?' or symbol == '(' or symbol == ')' or symbol == '^':
+    #
+    # custom_symbols = re.findall('\(`\w\w\)', pos)
+    # symbols +=custom_symbols
 
-    all_char = [Character(str(x)) for x in list(symbols)]
-    char_set = [Character('\d'), Character('\w'), Character('.')]
+    # print(symbols)
+    all_char = [Character(str(x)) for x in mapping_table.keys()]
+    #char_set = [Character('\d'), Character('\w'), Character('.')]
+    char_set = [Character('.'), Character('\w'), Character('\W'),  Character('\d'), Character('\D')]
+
+
     start_elems = [] + all_char + [Or()]
 
     for ch in char_set:
@@ -110,9 +129,25 @@ def get_start_elem_snort(example, start_with_no_concat, is_first):
 
 
 def main():
-    regex = synthesis(Examples(pos=set(['223', '2345', '24365', '282465']), neg=set(
-        ['111111', '111111', '1111', '1111111', '1', '11', '111', '1111', '1111', '1111'])),
-                      10000, start_with_no_concat=False,type='snort')
+    # regex = synthesis(Examples(pos=set(
+    #     ['A!B']), neg=set(
+    #     ['BAB', 'B!B', 'B!A', 'A!!', 'ABA', '!AB', 'AB!', 'ABB', '!!B', 'AA!'])),
+    #                   1000000, start_with_no_concat=False, type='snort',
+    #                   mapping_table={'A': 'a', 'B': 'a' })
+    # print(regex)
+    # exit()
+    # A.(B|C)D
+    # regex = synthesis(Examples(pos=set(
+    #     ['A1B{_4sN,!C', 'Ag{!C', 'A|+BC', 'AhUBC', 'AqD0zll!C', 'Ay!C', 'A7tS-WfcBC', 'AS!C', 'A sBC', 'A+TBC']), neg=set(
+    #     ['!qDczll!C', 'AqD,zll-C', 'AS!s', '-hUNC', 'cDsBC', ',|+!C', '_4UBC', 'AhtBz', 'Ag-gC', 'A+TBt'])),
+    #                   1000000, start_with_no_concat=False, type='snort',
+    #                   mapping_table={'A': 'a', 'B': 'a', 'C': 'a' })
+    # print(regex)
+    # exit()
+
+    regex = synthesis(Examples(pos=set(['ABkvBD', 'Ae!y!5_XUtXBD', 'Ae%QPmo0yBD', 'Af!_!_DtBD', 'A4$7!D', 'Au,kBD', 'ACTHct#5CD', 'AP jID1("ICD', 'AF%:b!!gKBD', 'AX*BD']), neg=set(
+        ['A#*XD', 'Au,C5D', 'Af!_!_DtP*', '5f!_!_Dt7D', 'A4"7!P', 'Ae%QPmo0y0D', 'AI*fD', 've!y!5_XUtXTD', 'fA%QPmo0yBD', 'AQkvmD'])),
+                      1000000, start_with_no_concat=False, type='snort', mapping_table={'A':'a', 'B':'a', 'C':'a', 'D':'a', })
     print(regex)
     exit()
     regex = synthesis(Examples(pos=set(['223', '2315', '2165', '221563']), neg=set(
