@@ -10,11 +10,11 @@ def membership(regex, string):
 
 def is_solution(regex, examples, membership, prefix_for_neg_test=None, suffix_for_neg_test=None):
     if regex == '@emptyset':
-        return False
+        return False, False
 
     for string in examples.getPos():
         if not membership(regex, string):
-            return False
+            return False, False
 
     if prefix_for_neg_test is not None:
         regex = '(' + prefix_for_neg_test + ')' + '(' + regex + ')'
@@ -23,9 +23,10 @@ def is_solution(regex, examples, membership, prefix_for_neg_test=None, suffix_fo
 
     for string in examples.getNeg():
         if membership(regex, string):
-            return False
+            return False, True
 
-    return True
+    return True, True
+
 
 
 def is_pdead(s, examples, alphabet_size=5):

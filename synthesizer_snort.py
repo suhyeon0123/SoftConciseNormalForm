@@ -6,7 +6,7 @@ import copy
 
 
 def synthesis(examples, count_limit=50000, start_with_no_concat=False, prefix_for_neg_test=None,
-              suffix_for_neg_test=None, alphabet_size=5, type=None, mapping_table=None):
+              suffix_for_neg_test=None, alphabet_size=5, type=None, mapping_table={'A':1,'B':1,'C':1 ,'C':1 ,'D':1 ,'E':1 ,'F':1 ,'G':1 ,'H':1 ,'I':1 ,'J':1 ,'K':1}):
     w = PriorityQueue()
     scanned = set()
     w.put((REGEX().getCost(), REGEX()))
@@ -16,6 +16,7 @@ def synthesis(examples, count_limit=50000, start_with_no_concat=False, prefix_fo
 
     answer = None
     finished = False
+    candidate = None
 
     while not w.empty() and not finished and i < count_limit:
         tmp = w.get()
@@ -25,10 +26,7 @@ def synthesis(examples, count_limit=50000, start_with_no_concat=False, prefix_fo
         hasHole = s.hasHole()
 
         all_char = [Character(str(x)) for x in range(alphabet_size)]
-        if type == 'snort':
-            start_elems = get_start_elem_snort(examples, start_with_no_concat, is_first=(i == 0), mapping_table=mapping_table)
-        else:
-            start_elems = get_start_elem(all_char, start_with_no_concat, is_first=(i == 0))
+        start_elems = get_start_elem_snort(examples, start_with_no_concat, is_first=(i == 0), mapping_table=mapping_table)
         #print(start_elems)
 
         # print("state : ", s, " cost: ", cost)
@@ -38,7 +36,7 @@ def synthesis(examples, count_limit=50000, start_with_no_concat=False, prefix_fo
                 k = copy.deepcopy(s)
                 if not k.spread(new_elem):
                     continue
-                print(k)
+
 
                 traversed += 1
                 if repr(k) in scanned:
@@ -47,10 +45,13 @@ def synthesis(examples, count_limit=50000, start_with_no_concat=False, prefix_fo
                     scanned.add(repr(k))
 
                 if not k.hasHole():
-                    if is_solution(repr(k), examples, membership, prefix_for_neg_test, suffix_for_neg_test):
+                    _solution, _candidate = is_solution(repr(k), examples, membership, prefix_for_neg_test, suffix_for_neg_test)
+                    if _solution:
                         answer = k
                         finished = True
                         break
+                    if _candidate:
+                        candidate = k
 
                 if repr(new_elem) == str(Or(*all_char)) or new_elem.type == Type.CHAR:
                     checker = True
@@ -75,14 +76,14 @@ def synthesis(examples, count_limit=50000, start_with_no_concat=False, prefix_fo
                 w.put((k.getCost(), k))
         i = i + 1
 
-    return answer
+    return answer, candidate
 
 
 def get_start_elem(all_char, start_with_no_concat, is_first):
     start_elems = [] + all_char + [Or(), Or(*all_char)]
     if not is_first or not start_with_no_concat:
         start_elems.append(Concatenate(Hole(), Hole()))
-    start_elems += [KleenStar(), Question()]
+    start_elems += [ Question(), KleenStar()]
 
     return start_elems
 
@@ -111,7 +112,7 @@ def get_start_elem_snort(example, start_with_no_concat, is_first, mapping_table)
     # print(symbols)
     all_char = [Character(str(x)) for x in mapping_table.keys()]
     #char_set = [Character('\d'), Character('\w'), Character('.')]
-    char_set = [Character('.'), Character('\w'), Character('\W'),  Character('\d'), Character('\D')]
+    char_set = [Character('\d'), Character('\w'), Character('!'), Character('.')]
 
 
     start_elems = [] + all_char + [Or()]
