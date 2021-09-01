@@ -308,6 +308,22 @@ class RE:
         else:
             return False
 
+    def redundant_charset(self):
+        if self.type == Type.K or self.type == Type.Q:
+            return self.r.redundant_charset()
+        elif self.type == Type.C:
+            return any(list(i.redundant_charset() for i in self.list))
+        elif self.type == Type.U:
+            print(self.list)
+            if '.*' in self.list:
+                return True
+            elif '\w*' in self.list and '\d*' in self.list:
+                return True
+        elif self.type == Type.REGEX:
+            return self.r.redundant_charset()
+        else:
+            return False
+
     def KCK(self, alphabet_size=5):
         if self.type == Type.K:
             if self.r.type == Type.C:

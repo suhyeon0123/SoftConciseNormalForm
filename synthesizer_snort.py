@@ -73,6 +73,10 @@ def synthesis(examples, count_limit=50000, start_with_no_concat=False, prefix_fo
                     #print(k)
                     continue
 
+                if k.redundant_charset():
+                    print(k)
+                    continue
+
                 w.put((k.getCost(), k))
         i = i + 1
 
@@ -88,30 +92,8 @@ def get_start_elem(all_char, start_with_no_concat, is_first):
     return start_elems
 
 def get_start_elem_snort(example, start_with_no_concat, is_first, mapping_table):
-    pos_lst = example.getPos()
 
-    # # make symbol list
-    # symbols = set()
-    # for pos in pos_lst:
-    #
-    #
-    #     pos = re.sub('\(`\w\w\)', '', pos)
-    #
-    #     for x in pos:
-    #         y = re.findall('(?!\x0b|\\\\|\\|\'|\(`\w\w\)).', x)
-    #         symbols.update(y)
-    #
-    # symbols = list(symbols)
-    # for idx, symbol in enumerate(symbols):
-    #     symbols[idx] = re.sub('(\*|\+|\(|\)|\^|\?|\||\'|\")', r'(\\\1)', symbol)
-    #     #if symbol == '*' or symbol == '+' or symbol == '?' or symbol == '(' or symbol == ')' or symbol == '^':
-    #
-    # custom_symbols = re.findall('\(`\w\w\)', pos)
-    # symbols +=custom_symbols
-
-    # print(symbols)
     all_char = [Character(str(x)) for x in mapping_table.keys()]
-    #char_set = [Character('\d'), Character('\w'), Character('.')]
     char_set = [Character('\d'), Character('\w'), Character('!'), Character('.')]
 
 
@@ -119,8 +101,6 @@ def get_start_elem_snort(example, start_with_no_concat, is_first, mapping_table)
 
     for ch in char_set:
         start_elems.append(ch)
-
-    #start_elems.append(Not())
 
     if not is_first or not start_with_no_concat:
         start_elems.append(Concatenate(Hole(), Hole()))
