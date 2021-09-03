@@ -90,13 +90,13 @@ class RE:
     def spreadRand(self, alphabet_size=5):
         if self.type == Type.REGEX or self.type == Type.K or self.type == Type.Q:
             if self.r.type == Type.HOLE:
-                self.r = rand_char(alphabet_size)
+                self.r = rand_char(alphabet_size, no_sigma=True)
             else:
                 self.r.spreadRand(alphabet_size)
         elif self.type == Type.C or self.type == Type.U:
             for index, regex in enumerate(self.list):
                 if regex.type == Type.HOLE:
-                    self.list[index] = rand_char(alphabet_size, no_sigma=(self.type == Type.U))
+                    self.list[index] = rand_char(alphabet_size, no_sigma=True)
                 else:
                     self.list[index].spreadRand(alphabet_size)
 
