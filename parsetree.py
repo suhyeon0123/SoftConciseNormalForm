@@ -69,10 +69,16 @@ class RE:
                         break
             else:
                 self.r.make_child(depth + 1, alphabet_size)
-        elif (self.type == Type.C or self.type == Type.U) and str(self) != str(Or(*[Character(str(x)) for x in range(alphabet_size)])):
+        elif self.type == Type.C:
             for index, regex in enumerate(self.list):
                 if regex.type == Type.HOLE:
                     self.list[index] = get_rand_re(depth, alphabet_size)
+                else:
+                    self.list[index].make_child(depth + 1, alphabet_size)
+        elif self.type == Type.U and len(self.list) != alphabet_size:
+            for index, regex in enumerate(self.list):
+                if regex.type == Type.HOLE:
+                    self.list[index] = get_rand_re(depth, alphabet_size, no_sigma=True)
                 else:
                     self.list[index].make_child(depth + 1, alphabet_size)
         elif self.type == Type.REGEX:
@@ -90,7 +96,7 @@ class RE:
         elif self.type == Type.C or self.type == Type.U:
             for index, regex in enumerate(self.list):
                 if regex.type == Type.HOLE:
-                    self.list[index] = rand_char(alphabet_size)
+                    self.list[index] = rand_char(alphabet_size, no_sigma=(self.type == Type.U))
                 else:
                     self.list[index].spreadRand(alphabet_size)
 
@@ -1089,10 +1095,10 @@ class Or(RE):
         return UNION_COST + sum(list(i.getCost() for i in self.list))
 
 
-def get_rand_re(depth, alphabet_size=5):
+def get_rand_re(depth, alphabet_size=5, no_sigma=False):
     case = random.randrange(0, depth)
     if case > 2:
-        return rand_char(alphabet_size)
+        return rand_char(alphabet_size, no_sigma)
     else:
         case = random.randrange(0, 7)
         if case <= 0:
@@ -1107,9 +1113,13 @@ def get_rand_re(depth, alphabet_size=5):
             return Hole()
 
 
-def rand_char(alpha_size=5):
-    case = random.randrange(0, alpha_size+1)
-    if case == alpha_size:
-        all_char = [Character(str(x)) for x in range(alpha_size)]
-        return Or(*all_char)
-    return Character(str(case))
+def rand_char(alpha_size=5, no_sigma=False):
+    if no_sigma:
+        case = random.randrange(0, alpha_size)
+        return Character(str(case))
+    else:
+        case = random.randrange(0, alpha_size + 1)
+        if case == alpha_size:
+            all_char = [Character(str(x)) for x in range(alpha_size)]
+            return Or(*all_char)
+        return Character(str(case))
