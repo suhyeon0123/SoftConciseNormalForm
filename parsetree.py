@@ -1108,5 +1108,8 @@ def get_rand_re(depth, alphabet_size=5):
 
 
 def rand_char(alpha_size=5):
-    case = random.randrange(0, alpha_size)
+    case = random.randrange(0, alpha_size+1)
+    if case == alpha_size:
+        all_char = [Character(str(x)) for x in range(alpha_size)]
+        return Or(*all_char)
     return Character(str(case))
