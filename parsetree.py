@@ -1094,14 +1094,14 @@ def get_rand_re(depth, alphabet_size=5):
     if case > 2:
         return rand_char(alphabet_size)
     else:
-        case = random.randrange(0, 6)
+        case = random.randrange(0, 7)
         if case <= 0:
             return Or()
-        elif case <= 2:
-            return Concatenate(Hole(), Hole())
         elif case <= 3:
+            return Concatenate(Hole(), Hole())
+        elif case <= 4:
             return KleenStar()
-        elif case <= 4 and depth != 1:
+        elif case <= 5 and depth != 1:
             return Question()
         else:
             return Hole()
