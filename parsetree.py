@@ -69,7 +69,7 @@ class RE:
                         break
             else:
                 self.r.make_child(depth + 1, alphabet_size)
-        elif self.type == Type.C or self.type == Type.U:
+        elif (self.type == Type.C or self.type == Type.U) and not set(self.list) & set([Character(str(x)) for x in range(alphabet_size)]):
             for index, regex in enumerate(self.list):
                 if regex.type == Type.HOLE:
                     self.list[index] = get_rand_re(depth, alphabet_size)
