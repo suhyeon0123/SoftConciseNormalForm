@@ -74,7 +74,6 @@ def synthesis(examples, count_limit=50000, start_with_no_concat=False, prefix_fo
                     continue
 
                 if k.redundant_charset():
-                    print(k)
                     continue
 
                 w.put((k.getCost(), k))

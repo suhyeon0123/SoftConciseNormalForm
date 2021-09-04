@@ -314,7 +314,6 @@ class RE:
         elif self.type == Type.C:
             return any(list(i.redundant_charset() for i in self.list))
         elif self.type == Type.U:
-            print(self.list)
             if '.*' in self.list:
                 return True
             elif '\w*' in self.list and '\d*' in self.list:
