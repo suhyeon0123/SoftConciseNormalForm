@@ -6,7 +6,7 @@ import copy
 
 
 def synthesis(examples, count_limit=50000, start_with_no_concat=False, prefix_for_neg_test=None,
-              suffix_for_neg_test=None, alphabet_size=5, type=None, mapping_table={'A':1,'B':1,'C':1 ,'C':1 ,'D':1 ,'E':1 ,'F':1 ,'G':1 ,'H':1 ,'I':1 ,'J':1 ,'K':1}):
+              suffix_for_neg_test=None, alphabet_size=5, type=None, mapping_table={'A':1,'B':1,'C':1 ,'C':1 ,'D':1 ,'E':1 ,'F':1 ,'G':1 ,'H':1 ,'I':1 ,'J':1 ,'K':1, 'L':1,'M':1,'N':1,'O':1,'P':1}):
     w = PriorityQueue()
     scanned = set()
     w.put((REGEX().getCost(), REGEX()))
@@ -103,13 +103,13 @@ def get_start_elem_snort(example, start_with_no_concat, is_first, mapping_table)
 
     if not is_first or not start_with_no_concat:
         start_elems.append(Concatenate(Hole(), Hole()))
-    start_elems += [KleenStar(), Question()]
+    start_elems += [Question(), KleenStar()]
 
     return start_elems
 
 
 def main():
-    # regex = synthesis(Examples(pos=set(
+    # regex = synthesis(Examples(pos=sset(
     #     ['A!B']), neg=set(
     #     ['BAB', 'B!B', 'B!A', 'A!!', 'ABA', '!AB', 'AB!', 'ABB', '!!B', 'AA!'])),
     #                   1000000, start_with_no_concat=False, type='snort',

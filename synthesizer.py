@@ -77,7 +77,7 @@ def get_start_elem(all_char, start_with_no_concat, is_first):
     start_elems = [] + all_char + [Or(), Or(*all_char)]
     if not is_first or not start_with_no_concat:
         start_elems.append(Concatenate(Hole(), Hole()))
-    start_elems += [KleenStar(), Question()]
+    start_elems += [Question(), KleenStar()]
 
     return start_elems
 
