@@ -109,36 +109,12 @@ def get_start_elem_snort(example, start_with_no_concat, is_first, mapping_table)
 
 
 def main():
-    # regex = synthesis(Examples(pos=sset(
-    #     ['A!B']), neg=set(
-    #     ['BAB', 'B!B', 'B!A', 'A!!', 'ABA', '!AB', 'AB!', 'ABB', '!!B', 'AA!'])),
-    #                   1000000, start_with_no_concat=False, type='snort',
-    #                   mapping_table={'A': 'a', 'B': 'a' })
-    # print(regex)
-    # exit()
-    # A.(B|C)D
-    # regex = synthesis(Examples(pos=set(
-    #     ['A1B{_4sN,!C', 'Ag{!C', 'A|+BC', 'AhUBC', 'AqD0zll!C', 'Ay!C', 'A7tS-WfcBC', 'AS!C', 'A sBC', 'A+TBC']), neg=set(
-    #     ['!qDczll!C', 'AqD,zll-C', 'AS!s', '-hUNC', 'cDsBC', ',|+!C', '_4UBC', 'AhtBz', 'Ag-gC', 'A+TBt'])),
-    #                   1000000, start_with_no_concat=False, type='snort',
-    #                   mapping_table={'A': 'a', 'B': 'a', 'C': 'a' })
-    # print(regex)
-    # exit()
 
     regex = synthesis(Examples(pos=set(['ABkvBD', 'Ae!y!5_XUtXBD', 'Ae%QPmo0yBD', 'Af!_!_DtBD', 'A4$7!D', 'Au,kBD', 'ACTHct#5CD', 'AP jID1("ICD', 'AF%:b!!gKBD', 'AX*BD']), neg=set(
         ['A#*XD', 'Au,C5D', 'Af!_!_DtP*', '5f!_!_Dt7D', 'A4"7!P', 'Ae%QPmo0y0D', 'AI*fD', 've!y!5_XUtXTD', 'fA%QPmo0yBD', 'AQkvmD'])),
                       1000000, start_with_no_concat=False, type='snort', mapping_table={'A':'a', 'B':'a', 'C':'a', 'D':'a', })
     print(regex)
-    exit()
-    regex = synthesis(Examples(pos=set(['223', '2315', '2165', '221563']), neg=set(
-        ['003120310', '214244', '02420021', '0204001', '021431', '1024', '1124', '222423442', '3212', '1133233'])),
-                      10000, start_with_no_concat=False,type='snort')
-    print(regex)
-    # regex = synthesis(Examples(pos=set(['222222', '2222', '22', '222222222']), neg=set(
-    #     ['003120310', '213233', '02320021', '0203001', '021331', '1023', '1123', '22232332', '3212', '1133233'])),
-    #                   2000, start_with_no_concat=False, alphabet_size=4, type='snort')
 
-    print(regex)
 
 
 if __name__ == "__main__":
